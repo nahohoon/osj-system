@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}정비 등록 — {{ mold.code }}{% endblock %}
+{% block content %}
+<div class="page-header"><h2>🔧 금형 정비 등록 — {{ mold.code }} ({{ mold.name }})</h2></div>
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">정비일 <span class="req">*</span></label>
+        <input type="date" name="maint_date" class="form-control" required value="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">정비 유형 <span class="req">*</span></label>
+        <select name="maint_type" class="form-control" required>
+          {% for t in ['예방정비','긴급수리','정기점검','세척/청소','교체'] %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">정비 시점 타수</label>
+        <input type="number" name="shot_at" class="form-control" value="{{ mold.current_shot }}">
+        <span class="form-hint">현재 누적: {{ "{:,}".format(mold.current_shot) }} 타</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">담당자</label>
+        <input type="text" name="worker" class="form-control" placeholder="정비 담당자">
+      </div>
+      <div class="form-group">
+        <label class="form-label">정비 비용 (원)</label>
+        <input type="number" name="cost" class="form-control" value="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">차기 정비 예정일</label>
+        <input type="date" name="next_plan" class="form-control">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">정비 내용 <span class="req">*</span></label>
+        <textarea name="content" class="form-control" required rows="4" placeholder="수행한 정비 내용을 상세히 입력하세요."></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 저장</button>
+      <a href="{{ url_for('mold_detail', mid=mold.id) }}" class="btn btn-gray">취소</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

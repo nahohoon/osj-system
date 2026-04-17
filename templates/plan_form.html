@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}생산계획 등록 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>📋 생산계획 {% if item %}수정{% else %}등록{% endif %}</h2>
+</div>
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">계획일 <span class="req">*</span></label>
+        <input type="date" name="plan_date" class="form-control" required
+               value="{{ item.plan_date if item else today }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">교대</label>
+        <select name="shift" class="form-control">
+          {% for s in ['주간','야간','특근'] %}
+          <option value="{{ s }}" {% if item and item.shift==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">품목 <span class="req">*</span></label>
+        <select name="product_id" class="form-control" required>
+          <option value="">-- 선택 --</option>
+          {% for p in products %}
+          <option value="{{ p.id }}" {% if item and item.product_id==p.id %}selected{% endif %}>
+            {{ p.code }} — {{ p.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">사용 금형</label>
+        <select name="mold_id" class="form-control">
+          <option value="">-- 선택 --</option>
+          {% for m in molds %}
+          <option value="{{ m.id }}" {% if item and item.mold_id==m.id %}selected{% endif %}>
+            {{ m.code }} — {{ m.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">계획 수량 (EA) <span class="req">*</span></label>
+        <input type="number" name="plan_qty" class="form-control" required min="0"
+               value="{{ item.plan_qty if item else '' }}" placeholder="예: 8000">
+      </div>
+      {% if item %}
+      <div class="form-group">
+        <label class="form-label">상태</label>
+        <select name="status" class="form-control">
+          {% for s in ['계획','진행','완료'] %}
+          <option value="{{ s }}" {% if item.status==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="form-group full">
+        <label class="form-label">비고</label>
+        <textarea name="note" class="form-control">{{ item.note if item else '' }}</textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 저장</button>
+      <a href="{{ url_for('plan_list') }}" class="btn btn-gray">취소</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

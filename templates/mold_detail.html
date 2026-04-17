@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}금형 상세 — {{ mold.code }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🔩 금형 상세 — {{ mold.code }}</h2>
+  <div class="btn-group">
+    <a href="{{ url_for('mold_edit', mid=mold.id) }}" class="btn btn-sm btn-blue">✏️ 수정</a>
+    <a href="{{ url_for('maint_new', mid=mold.id) }}" class="btn btn-sm btn-accent">🔧 정비 등록</a>
+    <a href="{{ url_for('mold_list') }}" class="btn btn-sm btn-gray">← 목록</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <!-- 금형 기본정보 -->
+  <div class="dash-card">
+    <div class="card-header">📋 금형 기본 정보</div>
+    <div class="card-body p0">
+      <table class="info-table">
+        <tr><th>금형코드</th><td><strong>{{ mold.code }}</strong></td></tr>
+        <tr><th>금형명</th><td>{{ mold.name }}</td></tr>
+        <tr><th>적용 품번</th><td>{{ mold.product_code or '-' }}</td></tr>
+        <tr><th>금형 소유</th><td>{{ mold.owner }}</td></tr>
+        <tr><th>재질</th><td>{{ mold.material or '-' }}</td></tr>
+        <tr><th>캐비티</th><td>{{ mold.cavity }}개</td></tr>
+        <tr><th>보관위치</th><td>{{ mold.location or '-' }}</td></tr>
+        <tr><th>등록일</th><td>{{ mold.registered_date or '-' }}</td></tr>
+        <tr><th>상태</th><td>
+          <span class="badge {% if mold.status=='정상' %}badge-normal{% elif mold.status=='수리중' %}badge-repair{% else %}badge-check{% endif %}">
+            {{ mold.status }}
+          </span>
+        </td></tr>
+        {% if mold.note %}<tr><th>비고</th><td>{{ mold.note }}</td></tr>{% endif %}
+      </table>
+    </div>
+  </div>
+
+  <!-- 수명 / 타수 게이지 -->
+  <div class="dash-card">
+    <div class="card-header">⏱️ 수명 / 타수 현황</div>
+    <div class="card-body">
+      <div class="life-gauge-wrap" style="padding:0;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span class="form-label">수명 사용률</span>
+          <span class="txt-bold {% if mold.life_rate>80 %}txt-red{% elif mold.life_rate>60 %}txt-orange{% else %}txt-green{% endif %}">
+            {{ mold.life_rate }}%
+          </span>
+        </div>
+        <div class="life-gauge-bar-outer">
+          <div class="life-gauge-bar"
+               style="width:{{ [mold.life_rate,100]|min }}%;
+               background:{% if mold.life_rate>80 %}#e74c3c{% elif mold.life_rate>60 %}#f39c12{% else %}#27ae60{% endif %};">
+            {% if mold.life_rate > 15 %}{{ mold.life_rate }}%{% endif %}
+          </div>
+        </div>
+      </div>
+      <table class="info-table" style="margin-top:16px;">
+        <tr><th>누적 타수</th><td><strong>{{ "{:,}".format(mold.current_shot) }}</strong></td></tr>
+        <tr><th>수명 타수</th><td>{{ "{:,}".format(mold.life_shot) }}</td></tr>
+        <tr><th>PM 주기</th><td>{{ "{:,}".format(mold.pm_interval) }} 타/회</td></tr>
+        <tr><th>최종 PM 타수</th><td>{{ "{:,}".format(mold.last_pm_shot) }}</td></tr>
+        <tr><th>다음 PM 타수</th><td>{{ "{:,}".format(mold.next_pm_shot) }}</td></tr>
+        <tr><th>PM 잔여</th>
+          <td class="{% if mold.pm_alert %}txt-red txt-bold{% else %}txt-green{% endif %}">
+            {{ "{:,}".format(mold.pm_remaining) }} 타
+            {% if mold.pm_alert %} 🔔 PM 필요!{% endif %}
+          </td>
+        </tr>
+      </table>
+      <!-- 타수 직접 수정 -->
+      <form method="post" action="{{ url_for('mold_shot_update', mid=mold.id) }}" style="margin-top:16px;display:flex;gap:8px;align-items:center;">
+        <label class="form-label" style="margin:0;white-space:nowrap;">타수 수정:</label>
+        <input type="number" name="current_shot" class="form-control" value="{{ mold.current_shot }}" style="width:140px;">
+        <button type="submit" class="btn btn-sm btn-primary">저장</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 정비 이력 -->
+<div class="section-divider">🔧 정비 이력</div>
+<div class="content-card" style="margin-bottom:20px;">
+  <table class="data-table">
+    <thead>
+      <tr><th>정비일</th><th>유형</th><th>정비시 타수</th><th>내용</th>
+          <th>담당자</th><th>비용</th><th>차기예정</th><th>관리</th></tr>
+    </thead>
+    <tbody>
+    {% for mn in maints %}
+    <tr>
+      <td>{{ mn.maint_date }}</td>
+      <td><span class="badge badge-check">{{ mn.maint_type }}</span></td>
+      <td>{{ "{:,}".format(mn.shot_at) if mn.shot_at else '-' }}</td>
+      <td>{{ mn.content or '-' }}</td>
+      <td>{{ mn.worker or '-' }}</td>
+      <td>{% if mn.cost %}{{ "{:,}".format(mn.cost) }}원{% else %}-{% endif %}</td>
+      <td>{{ mn.next_plan or '-' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('maint_delete', mnid=mn.id) }}" style="display:inline"
+              onsubmit="return confirm('삭제하시겠습니까?')">
+          <button type="submit" class="btn-xs btn-red">삭제</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-msg">정비 이력 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- 관련 불량 -->
+<div class="section-divider">⚠️ 이 금형 관련 최근 불량 (최근 10건)</div>
+<div class="content-card" style="margin-bottom:20px;">
+  <table class="data-table">
+    <thead><tr><th>발생일</th><th>LOT</th><th>불량유형</th><th>수량</th><th>조치</th></tr></thead>
+    <tbody>
+    {% for d in recent_defects %}
+    <tr>
+      <td>{{ d.defect_date }}</td><td><small>{{ d.lot_no or '-' }}</small></td>
+      <td>{{ d.defect_type }}</td>
+      <td class="txt-red txt-bold">{{ d.defect_qty }}</td>
+      <td><small>{{ (d.action or '')[:40] }}</small></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="empty-msg">관련 불량 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

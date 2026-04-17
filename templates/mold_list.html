@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}금형 현황 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🔩 금형 현황</h2>
+  <span class="sub-text">현대자동차 지급 금형 수명 및 정비 통합 관리</span>
+</div>
+
+{% if pm_molds %}
+<div class="dash-card" style="margin-bottom:16px;border-left:4px solid var(--red);">
+  <div class="card-header" style="color:var(--red);">🔔 PM 긴급 알림 — {{ pm_molds|length }}건 (잔여 타수 5,000 이하)</div>
+  <div class="card-body p0">
+    <table class="mini-table">
+      <thead><tr><th>금형코드</th><th>금형명</th><th>현재타수</th><th>다음PM</th><th>잔여타수</th><th>수명율</th><th>처리</th></tr></thead>
+      <tbody>
+      {% for m in pm_molds %}
+      <tr>
+        <td><strong>{{ m.code }}</strong></td><td>{{ m.name }}</td>
+        <td>{{ "{:,}".format(m.current_shot) }}</td>
+        <td>{{ "{:,}".format(m.next_pm_shot) }}</td>
+        <td class="txt-red txt-bold">{{ "{:,}".format(m.pm_remaining) }}</td>
+        <td>{{ m.life_rate }}%</td>
+        <td><a href="{{ url_for('maint_new', mid=m.id) }}" class="btn-xs btn-accent">정비 등록</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="content-header">
+  <form method="get" style="display:flex;gap:8px;">
+    <select name="status" class="form-control" style="width:120px;" onchange="this.form.submit()">
+      <option value="">전체</option>
+      {% for s in ['정상','점검중','수리중'] %}
+      <option value="{{ s }}" {% if status_filter==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <a href="{{ url_for('mold_new') }}" class="btn btn-accent">＋ 금형 등록</a>
+</div>
+
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>금형코드</th><th>금형명</th><th>적용품번</th><th>소유</th>
+          <th>누적타수</th><th>수명(타수)</th><th>수명율</th>
+          <th>PM주기</th><th>다음PM잔여</th><th>상태</th><th>관리</th></tr>
+    </thead>
+    <tbody>
+    {% for m in molds %}
+    <tr {% if m.pm_alert %}class="row-alert"{% endif %}>
+      <td><strong>{{ m.code }}</strong></td>
+      <td>{{ m.name }}</td>
+      <td>{{ m.product_code or '-' }}</td>
+      <td>{{ m.owner }}</td>
+      <td>{{ "{:,}".format(m.current_shot) }}</td>
+      <td>{{ "{:,}".format(m.life_shot) }}</td>
+      <td>
+        <div class="prog-wrap" style="width:100px;">
+          <div class="prog-bar" style="width:{{ [m.life_rate,100]|min }}%;
+            background:{% if m.life_rate>80 %}#e74c3c{% elif m.life_rate>60 %}#f39c12{% else %}#27ae60{% endif %}">
+          </div>
+        </div>
+        <small>{{ m.life_rate }}%</small>
+      </td>
+      <td>{{ "{:,}".format(m.pm_interval) }}</td>
+      <td class="{% if m.pm_alert %}txt-red txt-bold{% endif %}">
+        {{ "{:,}".format(m.pm_remaining) }}
+        {% if m.pm_alert %} 🔔{% endif %}
+      </td>
+      <td>
+        <span class="badge {% if m.status=='정상' %}badge-normal{% elif m.status=='수리중' %}badge-repair{% else %}badge-check{% endif %}">
+          {{ m.status }}
+        </span>
+      </td>
+      <td>
+        <div class="btn-group">
+          <a href="{{ url_for('mold_detail', mid=m.id) }}" class="btn-xs btn-blue">상세</a>
+          <a href="{{ url_for('mold_edit', mid=m.id) }}" class="btn-xs btn-gray">수정</a>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="11" class="empty-msg">등록된 금형이 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

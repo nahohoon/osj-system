@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}품질 트렌드 분석 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>📈 품질 트렌드 분석</h2>
+  <span class="sub-text">금형 수명 상태 × 불량률 상관 분석 · LOT별 품질이력 추적</span>
+</div>
+
+<!-- 핵심 차트: 금형 수명율 × 불량률 산점도 (벤처심사 핵심 차별화) -->
+<div class="dash-card" style="margin-bottom:20px;">
+  <div class="card-header" style="background:#1a3a5c;color:#fff;">
+    🔑 핵심 분석 — 금형 수명율 × 불량률 상관관계
+    <span style="font-size:12px;font-weight:400;margin-left:8px;opacity:.8;">
+      금형 수명이 높을수록 불량률 증가 여부를 직관적으로 파악
+    </span>
+  </div>
+  <div class="card-body" style="height:260px;">
+    {% if mold_scatter %}
+    <canvas id="scatterChart"></canvas>
+    {% else %}
+    <div class="empty-msg">실적 데이터 누적 후 분석 가능합니다.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="dash-grid2" style="margin-bottom:20px;">
+  <!-- 30일 불량 추이 -->
+  <div class="dash-card">
+    <div class="card-header">📅 최근 30일 불량 발생 추이</div>
+    <div class="card-body" style="height:200px;">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+  <!-- 불량 유형 분포 -->
+  <div class="dash-card">
+    <div class="card-header">⚠ 불량 유형별 분포</div>
+    <div class="card-body" style="height:200px;">
+      {% if type_top %}
+      <canvas id="typeChart"></canvas>
+      {% else %}<div class="empty-msg">데이터 없음</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid2" style="margin-bottom:20px;">
+  <!-- 품목별 불량 TOP5 -->
+  <div class="dash-card">
+    <div class="card-header">📦 품목별 불량 TOP 5</div>
+    <div class="card-body" style="height:180px;">
+      {% if prd_top %}<canvas id="prdChart"></canvas>
+      {% else %}<div class="empty-msg">데이터 없음</div>{% endif %}
+    </div>
+  </div>
+  <!-- 금형별 불량 TOP5 -->
+  <div class="dash-card">
+    <div class="card-header">🔩 금형별 불량 TOP 5</div>
+    <div class="card-body" style="height:180px;">
+      {% if mold_top %}<canvas id="moldChart"></canvas>
+      {% else %}<div class="empty-msg">데이터 없음</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- LOT별 품질이력 테이블 -->
+<div class="section-divider">📋 LOT별 품질이력 (최근 20 LOT · 금형 연계)</div>
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>LOT번호</th><th>생산일</th><th>사용금형</th>
+        <th>총생산</th><th>불량</th><th>불량률</th><th>판정</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for lot in lot_history %}
+    <tr>
+      <td><small class="txt-blue">{{ lot.lot_no }}</small></td>
+      <td>{{ lot.date }}</td>
+      <td><strong>{{ lot.mold }}</strong></td>
+      <td>{{ "{:,}".format(lot.total) }}</td>
+      <td class="{% if lot.defect > 0 %}txt-red{% endif %}">{{ lot.defect }}</td>
+      <td class="{% if lot.defect_rate > 1 %}txt-red txt-bold{% else %}txt-green{% endif %}">
+        {{ lot.defect_rate }}%
+      </td>
+      <td>
+        <span class="badge {% if lot.defect_rate <= 0.5 %}badge-pass{% elif lot.defect_rate <= 1.0 %}badge-plan{% else %}badge-fail{% endif %}">
+          {% if lot.defect_rate <= 0.5 %}우수{% elif lot.defect_rate <= 1.0 %}양호{% else %}관리{% endif %}
+        </span>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="empty-msg">생산실적 데이터가 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const COLORS = ['#e74c3c','#e67e22','#f1c40f','#27ae60','#3498db','#9b59b6','#1abc9c','#e91e63'];
+
+// 금형 수명율 × 불량률 산점도
+{% if mold_scatter %}
+const scatter = {{ mold_scatter | tojson }};
+new Chart(document.getElementById('scatterChart').getContext('2d'), {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      label: '금형 (수명율 vs 불량률)',
+      data: scatter.map(d => ({ x: d.x, y: d.y, label: d.label })),
+      backgroundColor: scatter.map(d => d.pm_alert ? 'rgba(231,76,60,0.85)' : 'rgba(52,152,219,0.75)'),
+      pointRadius: 10, pointHoverRadius: 13
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const d = scatter[ctx.dataIndex];
+            return `${d.label} | 수명율: ${d.x}% | 불량률: ${d.y}%`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: '금형 수명 사용률 (%)' }, min: 0, max: 100 },
+      y: { title: { display: true, text: '불량률 (%)' }, min: 0 }
+    }
+  },
+  plugins: [{
+    afterDraw: chart => {
+      const ctx2 = chart.ctx;
+      chart.data.datasets[0].data.forEach((pt, i) => {
+        const meta = chart.getDatasetMeta(0).data[i];
+        ctx2.fillStyle = '#1a3a5c';
+        ctx2.font = 'bold 11px sans-serif';
+        ctx2.fillText(scatter[i].label, meta.x + 6, meta.y - 6);
+      });
+    }
+  }]
+});
+{% endif %}
+
+// 30일 추이
+const trend = {{ trend | tojson }};
+new Chart(document.getElementById('trendChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: trend.map(d => d.date),
+    datasets: [{ label: '불량', data: trend.map(d => d.count),
+      borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.1)',
+      fill: true, tension: 0.35, pointRadius: 3 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+});
+
+{% if type_top %}
+const typeData = {{ type_top | tojson }};
+new Chart(document.getElementById('typeChart').getContext('2d'), {
+  type: 'doughnut',
+  data: { labels: typeData.map(d=>d[0]), datasets: [{
+    data: typeData.map(d=>d[1]), backgroundColor: COLORS
+  }]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+});
+{% endif %}
+
+{% if prd_top %}
+const prdData = {{ prd_top | tojson }};
+new Chart(document.getElementById('prdChart').getContext('2d'), {
+  type: 'bar',
+  data: { labels: prdData.map(d=>d[0]), datasets: [{
+    label: '불량수', data: prdData.map(d=>d[1]),
+    backgroundColor: 'rgba(52,152,219,0.75)', borderRadius: 4
+  }]},
+  options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } } }
+});
+{% endif %}
+
+{% if mold_top %}
+const moldData = {{ mold_top | tojson }};
+new Chart(document.getElementById('moldChart').getContext('2d'), {
+  type: 'bar',
+  data: { labels: moldData.map(d=>d[0]), datasets: [{
+    label: '불량수', data: moldData.map(d=>d[1]),
+    backgroundColor: 'rgba(231,76,60,0.75)', borderRadius: 4
+  }]},
+  options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } } }
+});
+{% endif %}
+</script>
+{% endblock %}

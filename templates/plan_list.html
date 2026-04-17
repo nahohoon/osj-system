@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}생산계획 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>📋 생산계획</h2>
+</div>
+<div class="content-header">
+  <div class="filter-bar" style="background:none;padding:0;border:none;">
+    <form method="get" style="display:flex;gap:8px;align-items:center;">
+      <label class="form-label" style="margin:0;">월 선택</label>
+      <input type="month" name="date" value="{{ date_filter }}" class="form-control" style="width:160px;">
+      <button type="submit" class="btn btn-sm btn-primary">조회</button>
+    </form>
+  </div>
+  <a href="{{ url_for('plan_new') }}" class="btn btn-accent">＋ 계획 등록</a>
+</div>
+
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>계획일</th><th>품번/품명</th><th>사용금형</th>
+        <th>계획수량</th><th>교대</th><th>상태</th><th>작업지시 수</th><th>관리</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for p in plans %}
+    <tr>
+      <td>{{ p.plan_date }}</td>
+      <td><strong>{{ p.product.code }}</strong><br><small>{{ p.product.name }}</small></td>
+      <td>{{ p.mold.code if p.mold else '-' }}</td>
+      <td>{{ "{:,}".format(p.plan_qty) }} EA</td>
+      <td>{{ p.shift }}</td>
+      <td>
+        <span class="badge {% if p.status=='완료' %}badge-done{% elif p.status=='진행' %}badge-ing{% else %}badge-plan{% endif %}">
+          {{ p.status }}
+        </span>
+      </td>
+      <td>{{ p.work_orders|length }}</td>
+      <td>
+        <div class="btn-group">
+          <a href="{{ url_for('plan_edit', pid=p.id) }}" class="btn-xs btn-blue">수정</a>
+          <form method="post" action="{{ url_for('plan_edit', pid=p.id) }}" style="display:inline">
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-msg">등록된 생산계획이 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}품목 관리 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>📦 품목 (제품) 관리</h2></div>
+<div class="content-header">
+  <div></div>
+  <a href="{{ url_for('product_new') }}" class="btn btn-accent">＋ 품목 등록</a>
+</div>
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>품번</th><th>품명</th><th>납품처</th><th>표준사이클(초)</th>
+          <th>기준치수</th><th>USL</th><th>LSL</th><th>관리</th></tr>
+    </thead>
+    <tbody>
+    {% for p in items %}
+    <tr>
+      <td><strong>{{ p.code }}</strong></td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.customer }}</td>
+      <td>{{ p.std_cycle }}</td>
+      <td>{{ p.nominal or '-' }}</td>
+      <td>{{ p.usl or '-' }}</td>
+      <td>{{ p.lsl or '-' }}</td>
+      <td>
+        <div class="btn-group">
+          <a href="{{ url_for('product_edit', pid=p.id) }}" class="btn-xs btn-blue">수정</a>
+          <form method="post" action="{{ url_for('product_delete', pid=p.id) }}" style="display:inline"
+                onsubmit="return confirm('삭제하시겠습니까?')">
+            <button type="submit" class="btn-xs btn-red">삭제</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-msg">등록된 품목이 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}작업지시 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>⚙️ 작업지시</h2></div>
+<div class="content-header">
+  <div class="filter-bar" style="background:none;padding:0;border:none;">
+    <form method="get" style="display:flex;gap:8px;">
+      <select name="status" class="form-control" style="width:110px;">
+        <option value="">전체 상태</option>
+        {% for s in ['대기','진행','완료','취소'] %}
+        <option value="{{ s }}" {% if status_f==s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary">조회</button>
+    </form>
+  </div>
+  <a href="{{ url_for('wo_new') }}" class="btn btn-accent">＋ 작업지시 생성</a>
+</div>
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>WO번호</th><th>계획일/품목</th><th>금형</th><th>지시수량</th>
+          <th>시작일시</th><th>완료일시</th><th>상태</th><th>상태변경</th><th>인쇄</th></tr>
+    </thead>
+    <tbody>
+    {% for w in wos %}
+    <tr>
+      <td><strong>{{ w.wo_no }}</strong></td>
+      <td>{{ w.plan.plan_date }}<br><small>{{ w.plan.product.name if w.plan else '-' }}</small></td>
+      <td>{{ w.plan.mold.code if w.plan and w.plan.mold else '-' }}</td>
+      <td>{{ "{:,}".format(w.ordered_qty) }}</td>
+      <td>{{ w.start_dt or '-' }}</td>
+      <td>{{ w.end_dt or '-' }}</td>
+      <td><span class="badge {% if w.status=='완료' %}badge-done{% elif w.status=='진행' %}badge-ing{% elif w.status=='취소' %}badge-cancel{% else %}badge-plan{% endif %}">{{ w.status }}</span></td>
+      <td>
+        {% if w.status == '대기' %}
+        <form method="post" action="{{ url_for('wo_status', wid=w.id) }}" style="display:inline">
+          <input type="hidden" name="status" value="진행">
+          <button type="submit" class="btn-xs btn-blue">▶ 시작</button>
+        </form>
+        {% elif w.status == '진행' %}
+        <form method="post" action="{{ url_for('wo_status', wid=w.id) }}" style="display:inline">
+          <input type="hidden" name="status" value="완료">
+          <button type="submit" class="btn-xs btn-green">✔ 완료</button>
+        </form>
+        {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('wo_detail', wid=w.id) }}" class="btn-xs btn-gray" target="_blank"
+           title="작업지시서 인쇄">🖨️ 인쇄</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="empty-msg">작업지시 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

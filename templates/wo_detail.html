@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>작업지시서 — {{ wo.wo_no }}</title>
+  <style>
+    /* ── 기본 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; font-size: 13px;
+           color: #111; background: #f5f5f5; }
+
+    /* ── 인쇄 전 화면 래퍼 ── */
+    .preview-bar {
+      background: #1e3a5f; color: #fff; padding: 10px 24px;
+      display: flex; gap: 12px; align-items: center;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .preview-bar span { flex: 1; font-size: 14px; }
+    .preview-bar button { padding: 6px 18px; border: none; border-radius: 4px;
+      cursor: pointer; font-size: 13px; font-weight: 700; }
+    .btn-print { background: #f59e0b; color: #111; }
+    .btn-close  { background: #6b7280; color: #fff; }
+
+    /* ── A4 용지 ── */
+    .page {
+      width: 210mm; min-height: 297mm; margin: 20px auto;
+      background: #fff; padding: 14mm 14mm 12mm;
+      box-shadow: 0 2px 16px rgba(0,0,0,.18);
+    }
+
+    /* ── 헤더 ── */
+    .doc-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 3px solid #1e3a5f; padding-bottom: 10px; margin-bottom: 14px;
+    }
+    .doc-logo { font-size: 18px; font-weight: 900; color: #1e3a5f; line-height: 1.3; }
+    .doc-logo small { font-size: 11px; font-weight: 400; color: #555; display: block; }
+    .doc-title { font-size: 22px; font-weight: 900; color: #1e3a5f;
+                 letter-spacing: 2px; text-align: center; flex: 1; padding-top: 4px; }
+    .doc-meta  { font-size: 11px; color: #555; text-align: right; line-height: 1.8; }
+    .doc-meta strong { color: #111; }
+
+    /* ── 기본정보 테이블 ── */
+    .info-tbl { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    .info-tbl th, .info-tbl td {
+      border: 1px solid #c8c8c8; padding: 6px 10px; font-size: 12px; vertical-align: middle;
+    }
+    .info-tbl th { background: #eef3fa; font-weight: 700; color: #1e3a5f;
+                   width: 18%; white-space: nowrap; }
+    .info-tbl td { width: 32%; }
+
+    /* ── 섹션 제목 ── */
+    .sec-title {
+      background: #1e3a5f; color: #fff; font-size: 12px; font-weight: 700;
+      padding: 5px 10px; margin: 14px 0 6px; letter-spacing: 1px;
+    }
+
+    /* ── 실적·불량 테이블 ── */
+    .data-tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+    .data-tbl th { background: #d8e4f0; border: 1px solid #b0bec5;
+                   padding: 5px 8px; font-weight: 700; text-align: center; }
+    .data-tbl td { border: 1px solid #b0bec5; padding: 5px 8px; text-align: center; }
+    .data-tbl tr:nth-child(even) td { background: #f8fbff; }
+    .data-tbl .empty { color: #aaa; font-style: italic; }
+
+    /* ── 서명란 ── */
+    .sign-wrap {
+      display: flex; gap: 0; border: 1px solid #c8c8c8; margin-top: 16px;
+    }
+    .sign-box { flex: 1; border-right: 1px solid #c8c8c8; padding: 6px 10px; min-height: 68px; }
+    .sign-box:last-child { border-right: none; }
+    .sign-box .sign-label { font-size: 11px; color: #666; font-weight: 700; margin-bottom: 4px; }
+    .sign-box .sign-line  { border-bottom: 1px dashed #aaa; margin: 20px 10px 0; }
+
+    /* ── 상태 배지 ── */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 10px;
+             font-size: 11px; font-weight: 700; }
+    .b-wait   { background: #fef3c7; color: #92400e; }
+    .b-go     { background: #dbeafe; color: #1e40af; }
+    .b-done   { background: #d1fae5; color: #065f46; }
+    .b-cancel { background: #e5e7eb; color: #374151; }
+
+    /* ── 비고란 ── */
+    .note-box {
+      border: 1px solid #c8c8c8; min-height: 48px; padding: 8px 10px;
+      font-size: 12px; color: #333; margin-bottom: 4px;
+    }
+
+    /* ── 푸터 ── */
+    .doc-footer {
+      margin-top: 18px; font-size: 10px; color: #888; text-align: center;
+      border-top: 1px solid #ddd; padding-top: 6px;
+    }
+
+    /* ── 인쇄 스타일 ── */
+    @media print {
+      body { background: #fff; }
+      .preview-bar { display: none !important; }
+      .page { margin: 0; box-shadow: none; padding: 10mm 12mm; width: 100%; }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 화면 전용 상단 바 -->
+<div class="preview-bar no-print">
+  <span>📄 작업지시서 미리보기 — {{ wo.wo_no }}</span>
+  <button class="btn-print" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+  <button class="btn-close" onclick="window.close()">✕ 닫기</button>
+</div>
+
+<!-- A4 페이지 -->
+<div class="page">
+
+  <!-- ── 헤더 ── -->
+  <div class="doc-header">
+    <div class="doc-logo">
+      ⬡ 오성정공<br>
+      <small>OSJ PRECISION Co., Ltd.</small>
+    </div>
+    <div class="doc-title">작 업 지 시 서</div>
+    <div class="doc-meta">
+      발행일: <strong>{{ wo.created_at.strftime('%Y-%m-%d') if wo.created_at else '—' }}</strong><br>
+      문서번호: <strong>{{ wo.wo_no }}</strong><br>
+      상태:
+      <span class="badge
+        {% if wo.status == '대기' %}b-wait
+        {% elif wo.status == '진행' %}b-go
+        {% elif wo.status == '완료' %}b-done
+        {% else %}b-cancel{% endif %}">
+        {{ wo.status }}
+      </span>
+    </div>
+  </div>
+
+  <!-- ── 기본 정보 ── -->
+  <div class="sec-title">▶ 작업지시 기본 정보</div>
+  <table class="info-tbl">
+    <tr>
+      <th>작업지시번호</th>
+      <td><strong>{{ wo.wo_no }}</strong></td>
+      <th>계획일</th>
+      <td>{{ wo.plan.plan_date if wo.plan else '—' }}</td>
+    </tr>
+    <tr>
+      <th>품번</th>
+      <td>{{ wo.plan.product.code if wo.plan and wo.plan.product else '—' }}</td>
+      <th>품명</th>
+      <td>{{ wo.plan.product.name if wo.plan and wo.plan.product else '—' }}</td>
+    </tr>
+    <tr>
+      <th>납품처</th>
+      <td>{{ wo.plan.product.customer if wo.plan and wo.plan.product else '—' }}</td>
+      <th>교대</th>
+      <td>{{ wo.plan.shift if wo.plan else '—' }}</td>
+    </tr>
+    <tr>
+      <th>사용 금형</th>
+      <td>{{ wo.plan.mold.code if wo.plan and wo.plan.mold else '—' }} &nbsp;
+          {% if wo.plan and wo.plan.mold %}<small>({{ wo.plan.mold.name }})</small>{% endif %}
+      </td>
+      <th>금형 캐비티</th>
+      <td>{{ wo.plan.mold.cavity if wo.plan and wo.plan.mold else '—' }} cavity</td>
+    </tr>
+    <tr>
+      <th>지시 수량</th>
+      <td><strong style="font-size:15px;">{{ "{:,}".format(wo.ordered_qty) }} EA</strong></td>
+      <th>계획 수량</th>
+      <td>{{ "{:,}".format(wo.plan.plan_qty) if wo.plan else '—' }} EA</td>
+    </tr>
+    <tr>
+      <th>시작 일시</th>
+      <td>{{ wo.start_dt or '미시작' }}</td>
+      <th>완료 일시</th>
+      <td>{{ wo.end_dt or '미완료' }}</td>
+    </tr>
+    {% if wo.plan and wo.plan.mold %}
+    <tr>
+      <th>금형 현 타수</th>
+      <td>{{ "{:,}".format(wo.plan.mold.current_shot) }} 타</td>
+      <th>금형 수명율</th>
+      <td>{{ wo.plan.mold.life_rate }}% (수명: {{ "{:,}".format(wo.plan.mold.life_shot) }}타)</td>
+    </tr>
+    {% endif %}
+  </table>
+
+  <!-- ── 품질 기준 ── -->
+  {% if wo.plan and wo.plan.product %}
+  {% set p = wo.plan.product %}
+  {% if p.nominal or p.usl or p.lsl %}
+  <div class="sec-title">▶ 품질 기준 (검사 허용범위)</div>
+  <table class="info-tbl">
+    <tr>
+      <th>기준치수 (Nominal)</th>
+      <td>{{ p.nominal if p.nominal is not none else '—' }} mm</td>
+      <th>표준 사이클</th>
+      <td>{{ p.std_cycle if p.std_cycle else '—' }} 초/개</td>
+    </tr>
+    <tr>
+      <th>허용 상한 (USL)</th>
+      <td style="color:#c0392b; font-weight:700;">{{ p.usl if p.usl is not none else '—' }}</td>
+      <th>허용 하한 (LSL)</th>
+      <td style="color:#2563eb; font-weight:700;">{{ p.lsl if p.lsl is not none else '—' }}</td>
+    </tr>
+    {% if p.usl is not none and p.lsl is not none %}
+    <tr>
+      <th>허용범위</th>
+      <td colspan="3" style="font-weight:700;">
+        {{ p.lsl }} ~ {{ p.usl }}
+        &nbsp;(공차: ±{{ "%.3f"|format((p.usl - p.lsl) / 2) }})
+      </td>
+    </tr>
+    {% endif %}
+  </table>
+  {% endif %}
+  {% endif %}
+
+  <!-- ── 생산실적 ── -->
+  <div class="sec-title">▶ 생산실적 (LOT 이력)</div>
+  {% set results = wo.results %}
+  {% if results %}
+  <table class="data-tbl">
+    <thead>
+      <tr>
+        <th>LOT 번호</th><th>실적일</th><th>총생산(EA)</th>
+        <th>양품(EA)</th><th>불량(EA)</th><th>불량률(%)</th>
+        <th>타수</th><th>작업자</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in results %}
+    {% set dr = (r.defect_qty / r.total_qty * 100) if r.total_qty else 0 %}
+    <tr>
+      <td>{{ r.lot_no }}</td>
+      <td>{{ r.result_date }}</td>
+      <td><strong>{{ "{:,}".format(r.total_qty) }}</strong></td>
+      <td style="color:#065f46;">{{ "{:,}".format(r.good_qty) }}</td>
+      <td style="color:#b91c1c;">{{ r.defect_qty }}</td>
+      <td style="{% if dr > 1 %}color:#b91c1c;font-weight:700;{% endif %}">
+        {{ "%.2f"|format(dr) }}%
+      </td>
+      <td>{{ "{:,}".format(r.shot_count) }}</td>
+      <td>{{ r.worker or '—' }}</td>
+    </tr>
+    {% endfor %}
+    <!-- 합계 -->
+    {% set tot_total  = results | sum(attribute='total_qty') %}
+    {% set tot_good   = results | sum(attribute='good_qty') %}
+    {% set tot_defect = results | sum(attribute='defect_qty') %}
+    {% set tot_shot   = results | sum(attribute='shot_count') %}
+    <tr style="background:#f0f4ff;font-weight:700;">
+      <td colspan="2" style="text-align:center;">합 계</td>
+      <td>{{ "{:,}".format(tot_total) }}</td>
+      <td style="color:#065f46;">{{ "{:,}".format(tot_good) }}</td>
+      <td style="color:#b91c1c;">{{ tot_defect }}</td>
+      <td>{{ "%.2f"|format(tot_defect / tot_total * 100 if tot_total else 0) }}%</td>
+      <td>{{ "{:,}".format(tot_shot) }}</td>
+      <td>—</td>
+    </tr>
+    </tbody>
+  </table>
+  {% else %}
+  <div class="note-box" style="color:#aaa;">등록된 생산실적 없음</div>
+  {% endif %}
+
+  <!-- ── 불량 이력 ── -->
+  <div class="sec-title">▶ 불량 발생 이력</div>
+  {% set defects = [] %}
+  {% for r in wo.results %}
+    {% for d in r.defects if r.defects is defined %}{% endfor %}
+  {% endfor %}
+  {# 불량은 result_id 경유로 조회되므로 결과 LOT들의 불량을 나열 #}
+  {% set has_defect = false %}
+  {% for r in wo.results %}
+    {% if r.defect_qty > 0 %}{% set has_defect = true %}{% endif %}
+  {% endfor %}
+
+  <table class="data-tbl">
+    <thead>
+      <tr><th>발생일</th><th>LOT</th><th>불량 유형</th><th>수량(EA)</th>
+          <th>원인</th><th>조치</th></tr>
+    </thead>
+    <tbody>
+    {% set defect_rows = namespace(found=false) %}
+    {% for r in wo.results %}
+      {% for d in r.defect_records %}
+      {% set defect_rows.found = true %}
+      <tr>
+        <td>{{ d.defect_date }}</td>
+        <td>{{ d.lot_no or r.lot_no }}</td>
+        <td><strong>{{ d.defect_type }}</strong></td>
+        <td style="color:#b91c1c;font-weight:700;">{{ d.defect_qty }}</td>
+        <td style="text-align:left;">{{ (d.cause or '—')[:30] }}</td>
+        <td style="text-align:left;">{{ (d.action or '—')[:30] }}</td>
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    {% if not defect_rows.found %}
+    <tr><td colspan="6" class="empty">불량 이력 없음</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+
+  <!-- ── 특기사항 / 작업 주의사항 ── -->
+  <div class="sec-title">▶ 특기사항 / 작업 주의사항</div>
+  <div class="note-box">
+    {{ wo.note or '' }}
+    {% if wo.plan and wo.plan.mold and wo.plan.mold.pm_alert %}
+    <div style="color:#c0392b;font-weight:700;margin-top:6px;">
+      ⚠️ 금형 PM 필요: 다음 PM까지 잔여 {{ "{:,}".format(wo.plan.mold.pm_remaining) }} 타
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── 서명란 ── -->
+  <div class="sec-title">▶ 확인 서명</div>
+  <div class="sign-wrap">
+    <div class="sign-box">
+      <div class="sign-label">지시자 (생산관리)</div>
+      <div class="sign-line"></div>
+      <div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-label">작업 책임자</div>
+      <div class="sign-line"></div>
+      <div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-label">품질 확인</div>
+      <div class="sign-line"></div>
+      <div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-label">대 표</div>
+      <div class="sign-line"></div>
+      <div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div>
+    </div>
+  </div>
+
+  <!-- ── 푸터 ── -->
+  <div class="doc-footer">
+    오성정공(주) · 금형기반 스마트 생산품질 관리시스템 v2.0 &nbsp;|&nbsp;
+    문서번호: {{ wo.wo_no }} &nbsp;|&nbsp;
+    출력일시: <span id="printTime"></span>
+  </div>
+</div>
+
+<script>
+  // 출력 일시 자동 삽입
+  document.getElementById('printTime').textContent =
+    new Date().toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit'});
+</script>
+</body>
+</html>

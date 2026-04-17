@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}불량 관리 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>⚠️ 불량 관리</h2></div>
+<div class="content-header">
+  <div></div>
+  <a href="{{ url_for('defect_new') }}" class="btn btn-accent">＋ 불량 등록</a>
+</div>
+
+{% if trend_labels %}
+<div class="dash-card" style="margin-bottom:20px;padding:16px;">
+  <div class="card-header">불량 유형별 집계</div>
+  <div class="card-body" style="height:180px;">
+    <canvas id="defectChart"></canvas>
+  </div>
+</div>
+{% endif %}
+
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>발생일</th><th>LOT</th><th>품목</th><th>금형</th>
+          <th>불량유형</th><th>불량수</th><th>원인</th><th>조치</th></tr>
+    </thead>
+    <tbody>
+    {% for d in defects %}
+    <tr>
+      <td>{{ d.defect_date }}</td>
+      <td><small>{{ d.lot_no or '-' }}</small></td>
+      <td>{{ d.product.name if d.product else '-' }}</td>
+      <td>{{ d.mold.code if d.mold else '-' }}</td>
+      <td><span class="badge badge-fail">{{ d.defect_type or '-' }}</span></td>
+      <td class="txt-red txt-bold">{{ d.defect_qty }}</td>
+      <td><small>{{ (d.cause or '')[:30] }}</small></td>
+      <td><small>{{ (d.action or '')[:30] }}</small></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty-msg">불량 기록 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if trend_labels %}
+<script>
+const ctx = document.getElementById('defectChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ trend_labels | tojson }},
+    datasets: [{ label: '불량수', data: {{ trend_data | tojson }},
+      backgroundColor: 'rgba(231,76,60,0.75)', borderRadius: 4 }]
+  },
+  options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:false } } }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}검사 상세 — {{ insp.insp_no }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🔍 검사 상세 — {{ insp.insp_no }}</h2>
+  <div class="btn-group">
+    <a href="{{ url_for('insp_list') }}" class="btn btn-sm btn-gray">← 목록</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="dash-card">
+    <div class="card-header">📋 검사 기본 정보</div>
+    <div class="card-body p0">
+      <table class="info-table">
+        <tr><th>검사번호</th><td><strong>{{ insp.insp_no }}</strong></td></tr>
+        <tr><th>검사일시</th><td>{{ insp.insp_date }} {{ insp.insp_time }}</td></tr>
+        <tr><th>품목</th><td>{{ insp.product.name if insp.product else '-' }}</td></tr>
+        <tr><th>금형</th><td>{{ insp.mold.code if insp.mold else '-' }}</td></tr>
+        <tr><th>LOT 번호</th><td>{{ insp.lot_no or '-' }}</td></tr>
+        <tr><th>검사 유형</th><td>{{ insp.insp_type }}</td></tr>
+        <tr><th>검사자</th><td>{{ insp.inspector }}</td></tr>
+        <tr><th>측정기</th><td>{{ insp.tool_used }}</td></tr>
+        <tr><th>종합 결과</th><td>
+          <span class="badge {% if insp.overall_result=='PASS' %}badge-pass{% else %}badge-fail{% endif %}" style="font-size:15px;padding:4px 16px;">
+            {{ insp.overall_result }}
+          </span>
+        </td></tr>
+        {% if insp.note %}<tr><th>비고</th><td>{{ insp.note }}</td></tr>{% endif %}
+      </table>
+    </div>
+  </div>
+
+  <!-- 항목별 결과 시각화 -->
+  <div class="dash-card">
+    <div class="card-header">📊 항목별 결과 요약</div>
+    <div class="card-body">
+      {% set pass_cnt = insp.items | selectattr('result','eq','PASS') | list | length %}
+      {% set fail_cnt = insp.items | length - pass_cnt %}
+      <div style="display:flex;gap:16px;margin-bottom:16px;">
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;color:var(--green);">{{ pass_cnt }}</div>
+          <div style="font-size:12px;color:var(--text-lt);">PASS</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;color:var(--red);">{{ fail_cnt }}</div>
+          <div style="font-size:12px;color:var(--text-lt);">FAIL</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;color:var(--primary);">{{ insp.items|length }}</div>
+          <div style="font-size:12px;color:var(--text-lt);">전체</div>
+        </div>
+      </div>
+      {% for it in insp.items %}
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;">
+          <span>{{ it.item_name }}</span>
+          <span class="{% if it.result=='PASS' %}result-pass{% elif it.result=='UNCHECKED' %}result-unchecked{% else %}result-fail{% endif %}">
+            {{ it.result }} {% if it.measured is not none %}({{ it.measured }}){% endif %}
+          </span>
+        </div>
+        {% if it.measured is not none and it.usl is not none and it.lsl is not none %}
+        {% set span = it.usl - it.lsl %}
+        {% set pos = ((it.measured - it.lsl) / span * 100) if span > 0 else 50 %}
+        <div class="prog-wrap" style="position:relative;">
+          <div class="prog-bar" style="width:{{ [pos,100]|min|max(0) }}%;
+            background:{% if it.result=='PASS' %}var(--green){% else %}var(--red){% endif %};"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-lt);">
+          LSL {{ it.lsl }} ↔ 실측 {{ it.measured }} ↔ USL {{ it.usl }}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- 전체 항목 테이블 -->
+<div class="section-divider">📐 항목별 측정값 상세</div>
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>#</th><th>검사항목</th><th>기준치</th><th>USL</th><th>LSL</th>
+          <th>허용범위</th><th>실측값</th><th>편차</th><th>결과</th></tr>
+    </thead>
+    <tbody>
+    {% for it in insp.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td><strong>{{ it.item_name }}</strong></td>
+      <td>{{ it.nominal if it.nominal is not none else '-' }}</td>
+      <td style="color:var(--red);">{{ it.usl if it.usl is not none else '-' }}</td>
+      <td style="color:#2563eb;">{{ it.lsl if it.lsl is not none else '-' }}</td>
+      <td>
+        {% if it.usl is not none and it.lsl is not none %}
+          <span style="font-size:12px;color:var(--primary);">{{ it.lsl }} ~ {{ it.usl }}</span>
+        {% elif it.usl is not none %}
+          <span style="font-size:12px;">≤ {{ it.usl }}</span>
+        {% elif it.lsl is not none %}
+          <span style="font-size:12px;">≥ {{ it.lsl }}</span>
+        {% else %}-{% endif %}
+      </td>
+      <td class="txt-bold {% if it.result=='PASS' %}txt-green{% elif it.result=='UNCHECKED' %}txt-gray{% else %}txt-red{% endif %}">
+        {{ it.measured if it.measured is not none else '미측정' }}
+      </td>
+      <td>
+        {% if it.measured is not none and it.nominal is not none %}
+          {% set dev = it.measured - it.nominal %}
+          <span class="{% if dev > 0 %}txt-blue{% elif dev < 0 %}txt-red{% endif %}">
+            {% if dev > 0 %}+{% endif %}{{ "%.3f"|format(dev) }}
+          </span>
+        {% else %}-{% endif %}
+      </td>
+      <td>
+        <span class="badge {% if it.result=='PASS' %}badge-pass{% elif it.result=='UNCHECKED' %}badge-plan{% else %}badge-fail{% endif %}">
+          {{ it.result or '-' }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}오성정공 금형기반 스마트 생산품질 관리시스템{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ▶ 헤더 -->
+<header class="top-header">
+  <div class="header-left">
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <span class="brand">
+      <span class="brand-mark">⬡</span>
+      <span class="brand-ko">오성정공</span>
+      <span class="brand-sub">금형기반 스마트 생산품질 관리시스템</span>
+    </span>
+  </div>
+  <div class="header-right">
+    {% if pm_alert_count > 0 %}
+    <a href="{{ url_for('mold_list') }}" class="alert-badge">
+      🔔 금형 PM 알림 <strong>{{ pm_alert_count }}건</strong>
+    </a>
+    {% endif %}
+    <span class="today-label">📅 {{ today }}</span>
+  </div>
+</header>
+
+<!-- ▶ 사이드바 — 3섹션 구조 -->
+<nav class="sidebar" id="sidebar">
+  <ul class="nav-menu">
+
+    <!-- 대시보드 -->
+    <li class="nav-item {% if request.endpoint=='dashboard' %}active{% endif %}">
+      <a href="{{ url_for('dashboard') }}">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-text">스마트 대시보드</span>
+      </a>
+    </li>
+
+    <!-- ── 섹션 1: 생산관리 ── -->
+    <li class="nav-section">
+      <span class="section-num">①</span> 생산관리
+    </li>
+    <li class="nav-item {% if request.endpoint in ['plan_list','plan_new','plan_edit'] %}active{% endif %}">
+      <a href="{{ url_for('plan_list') }}">
+        <span class="nav-icon">📋</span><span class="nav-text">생산계획</span>
+      </a>
+    </li>
+    <li class="nav-item {% if request.endpoint in ['wo_list','wo_new'] %}active{% endif %}">
+      <a href="{{ url_for('wo_list') }}">
+        <span class="nav-icon">▶</span><span class="nav-text">작업지시</span>
+      </a>
+    </li>
+    <li class="nav-item {% if request.endpoint in ['result_list','result_new'] %}active{% endif %}">
+      <a href="{{ url_for('result_list') }}">
+        <span class="nav-icon">📊</span><span class="nav-text">생산실적 · LOT</span>
+      </a>
+    </li>
+    <li class="nav-item {% if request.endpoint in ['defect_list','defect_new'] %}active{% endif %}">
+      <a href="{{ url_for('defect_list') }}">
+        <span class="nav-icon">⚠</span><span class="nav-text">불량 등록</span>
+      </a>
+    </li>
+
+    <!-- ── 섹션 2: 금형관리 ── -->
+    <li class="nav-section">
+      <span class="section-num">②</span> 금형관리
+      {% if pm_alert_count > 0 %}
+        <span class="badge-red ml-auto">PM {{ pm_alert_count }}</span>
+      {% endif %}
+    </li>
+    <li class="nav-item {% if request.endpoint in ['mold_list','mold_new'] %}active{% endif %}">
+      <a href="{{ url_for('mold_list') }}">
+        <span class="nav-icon">🔩</span>
+        <span class="nav-text">금형 현황</span>
+        {% if pm_alert_count > 0 %}
+          <span class="badge-red" style="margin-left:auto;">{{ pm_alert_count }}</span>
+        {% endif %}
+      </a>
+    </li>
+    <li class="nav-item {% if request.endpoint in ['mold_detail','mold_edit','maint_new'] %}active{% endif %}">
+      <a href="{{ url_for('mold_list') }}">
+        <span class="nav-icon">🔧</span><span class="nav-text">정비이력 관리</span>
+      </a>
+    </li>
+
+    <!-- ── 섹션 3: 품질혁신 ── -->
+    <li class="nav-section">
+      <span class="section-num">③</span> 품질혁신
+    </li>
+    <li class="nav-item {% if request.endpoint in ['insp_list','insp_new','insp_detail'] %}active{% endif %}">
+      <a href="{{ url_for('insp_list') }}">
+        <span class="nav-icon">🔍</span><span class="nav-text">순회검사</span>
+      </a>
+    </li>
+    <li class="nav-item {% if request.endpoint=='quality_trend' %}active{% endif %}">
+      <a href="{{ url_for('quality_trend') }}">
+        <span class="nav-icon">📈</span><span class="nav-text">품질 트렌드 분석</span>
+      </a>
+    </li>
+
+    <!-- ── 기준정보 (하단 축소) ── -->
+    <li class="nav-section" style="margin-top:16px;">기준정보</li>
+    <li class="nav-item {% if request.endpoint in ['product_list','product_new','product_edit'] %}active{% endif %}">
+      <a href="{{ url_for('product_list') }}">
+        <span class="nav-icon">📦</span><span class="nav-text">품목 (치수기준)</span>
+      </a>
+    </li>
+
+  </ul>
+
+  <!-- 사이드바 하단 버전 표시 -->
+  <div class="sidebar-footer">
+    <div class="sidebar-version">v2.0 · 벤처기업 기술자산</div>
+    <div class="sidebar-concept">금형 → 생산 → 품질 연계</div>
+  </div>
+</nav>
+
+<!-- ▶ 메인 -->
+<main class="main-content" id="mainContent">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+  document.getElementById('mainContent').classList.toggle('expanded');
+}
+setTimeout(() => {
+  document.querySelectorAll('.flash').forEach(el => {
+    el.style.transition = 'opacity 0.5s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 500);
+  });
+}, 3500);
+</script>
+</body>
+</html>

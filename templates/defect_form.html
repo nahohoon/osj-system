@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}불량 등록 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>⚠️ 불량 등록</h2></div>
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">발생일 <span class="req">*</span></label>
+        <input type="date" name="defect_date" class="form-control" required value="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">LOT 번호</label>
+        <select name="result_id" class="form-control" onchange="fillLot(this)">
+          <option value="">-- LOT 선택 (선택사항) --</option>
+          {% for r in results %}
+          <option value="{{ r.id }}" data-lot="{{ r.lot_no }}">{{ r.lot_no }} ({{ r.result_date }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">LOT 번호 (직접입력)</label>
+        <input type="text" name="lot_no" id="lotNoInput" class="form-control" placeholder="또는 직접 입력">
+      </div>
+      <div class="form-group">
+        <label class="form-label">품목</label>
+        <select name="product_id" class="form-control">
+          <option value="">-- 선택 --</option>
+          {% for p in products %}
+          <option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">금형</label>
+        <select name="mold_id" class="form-control">
+          <option value="">-- 선택 --</option>
+          {% for m in molds %}
+          <option value="{{ m.id }}">{{ m.code }} — {{ m.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">불량 유형 <span class="req">*</span></label>
+        <select name="defect_type" class="form-control" required>
+          <option value="">-- 선택 --</option>
+          {% for t in ['치수불량','외관불량','균열','버(버어)','찍힘','변형','기타'] %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">불량 수량 <span class="req">*</span></label>
+        <input type="number" name="defect_qty" class="form-control" required min="1" value="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">작업자</label>
+        <input type="text" name="worker" class="form-control">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">불량 원인</label>
+        <textarea name="cause" class="form-control" placeholder="불량 발생 원인을 입력하세요"></textarea>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">조치 사항</label>
+        <textarea name="action" class="form-control" placeholder="조치 내용을 입력하세요"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 저장</button>
+      <a href="{{ url_for('defect_list') }}" class="btn btn-gray">취소</a>
+    </div>
+  </form>
+</div>
+<script>
+function fillLot(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('lotNoInput').value = opt.dataset.lot || '';
+}
+</script>
+{% endblock %}

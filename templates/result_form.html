@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}생산실적 입력 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>📊 생산실적 입력 (LOT 자동 생성)</h2></div>
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">작업지시 선택 <span class="req">*</span></label>
+        <select name="wo_id" class="form-control" required>
+          <option value="">-- 선택 --</option>
+          {% for w in wos %}
+          <option value="{{ w.id }}">{{ w.wo_no }} | {{ w.plan.product.name if w.plan else '' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">실적일 <span class="req">*</span></label>
+        <input type="date" name="result_date" class="form-control" required value="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">총 생산 수량 <span class="req">*</span></label>
+        <input type="number" name="good_qty" id="goodQty" class="form-control" min="0" required
+               placeholder="양품 수량" oninput="calcTotal()">
+        <span class="form-hint">양품 수량</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">불량 수량</label>
+        <input type="number" name="defect_qty" id="defectQty" class="form-control" min="0" value="0"
+               oninput="calcTotal()">
+        <span class="form-hint" id="totalHint">총 생산: 0 EA</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">금형 타수 (자동 증가)</label>
+        <input type="number" name="shot_count" id="shotCount" class="form-control" min="0"
+               placeholder="입력 없으면 총 생산수량으로 자동">
+        <span class="form-hint">비워두면 총 생산수량 기준 자동 계산</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">작업자</label>
+        <input type="text" name="worker" class="form-control" placeholder="작업자 이름">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">비고</label>
+        <textarea name="note" class="form-control"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 저장 (LOT 자동 생성)</button>
+      <a href="{{ url_for('result_list') }}" class="btn btn-gray">취소</a>
+    </div>
+  </form>
+</div>
+<script>
+function calcTotal() {
+  const g = parseInt(document.getElementById('goodQty').value) || 0;
+  const d = parseInt(document.getElementById('defectQty').value) || 0;
+  document.getElementById('totalHint').textContent = '총 생산: ' + (g + d).toLocaleString() + ' EA';
+}
+</script>
+{% endblock %}

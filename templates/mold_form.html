@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}금형 {% if item %}수정{% else %}등록{% endif %} — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>🔩 금형 {% if item %}수정{% else %}등록{% endif %}</h2></div>
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">금형코드 <span class="req">*</span></label>
+        <input type="text" name="code" class="form-control" required value="{{ item.code if item else '' }}" placeholder="예: M-001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">금형명 <span class="req">*</span></label>
+        <input type="text" name="name" class="form-control" required value="{{ item.name if item else '' }}" placeholder="예: 프론트 브라켓 드로잉금형">
+      </div>
+      <div class="form-group">
+        <label class="form-label">적용 품번</label>
+        <input type="text" name="product_code" class="form-control" value="{{ item.product_code if item else '' }}" placeholder="예: B-1234">
+      </div>
+      <div class="form-group">
+        <label class="form-label">금형 소유</label>
+        <input type="text" name="owner" class="form-control" value="{{ item.owner if item else '현대자동차' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">재질</label>
+        <input type="text" name="material" class="form-control" value="{{ item.material if item else '' }}" placeholder="예: SKD11">
+      </div>
+      <div class="form-group">
+        <label class="form-label">캐비티 수</label>
+        <input type="number" name="cavity" class="form-control" min="1" value="{{ item.cavity if item else '1' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">수명 타수</label>
+        <input type="number" name="life_shot" class="form-control" value="{{ item.life_shot if item else '500000' }}" placeholder="예: 500000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">PM 주기 (타수/회)</label>
+        <input type="number" name="pm_interval" class="form-control" value="{{ item.pm_interval if item else '50000' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">현재 누적 타수</label>
+        <input type="number" name="current_shot" class="form-control" value="{{ item.current_shot if item else '0' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">최종 PM 완료 타수</label>
+        <input type="number" name="last_pm_shot" class="form-control" value="{{ item.last_pm_shot if item else '0' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">상태</label>
+        <select name="status" class="form-control">
+          {% for s in ['정상','점검중','수리중'] %}
+          <option value="{{ s }}" {% if item and item.status==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">보관 위치</label>
+        <input type="text" name="location" class="form-control" value="{{ item.location if item else '' }}" placeholder="예: 금형창고 A-1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">등록일</label>
+        <input type="date" name="registered_date" class="form-control" value="{{ item.registered_date if item else today }}">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">비고</label>
+        <textarea name="note" class="form-control">{{ item.note if item else '' }}</textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 저장</button>
+      <a href="{{ url_for('mold_list') }}" class="btn btn-gray">취소</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

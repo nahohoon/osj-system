@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}품목 {% if item %}수정{% else %}등록{% endif %} — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>📦 품목 {% if item %}수정{% else %}등록{% endif %}</h2></div>
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">품번 <span class="req">*</span></label>
+        <input type="text" name="code" class="form-control" required value="{{ item.code if item else '' }}" placeholder="예: B-1234">
+      </div>
+      <div class="form-group">
+        <label class="form-label">품명 <span class="req">*</span></label>
+        <input type="text" name="name" class="form-control" required value="{{ item.name if item else '' }}" placeholder="예: 프론트 브라켓">
+      </div>
+      <div class="form-group">
+        <label class="form-label">납품처</label>
+        <input type="text" name="customer" class="form-control" value="{{ item.customer if item else '현대자동차' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">단위</label>
+        <input type="text" name="unit" class="form-control" value="{{ item.unit if item else 'EA' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">표준 사이클 (초/개)</label>
+        <input type="number" step="0.01" name="std_cycle" class="form-control" value="{{ item.std_cycle if item else '0' }}">
+      </div>
+      <div class="form-group"></div>
+      <div class="section-divider full" style="grid-column:1/-1;margin:4px 0 8px;font-size:13px;font-weight:600;color:var(--primary);border-bottom:1px solid var(--gray-bd);padding-bottom:4px;">
+        🔢 검사 기준치수 (순회검사 자동 불러오기)
+      </div>
+      <div class="form-group">
+        <label class="form-label">기준치수 (Nominal)</label>
+        <input type="number" step="0.001" name="nominal" class="form-control" value="{{ item.nominal if item else '' }}" placeholder="예: 25.000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">상한 (USL)</label>
+        <input type="number" step="0.001" name="usl" class="form-control" value="{{ item.usl if item else '' }}" placeholder="예: 25.050">
+      </div>
+      <div class="form-group">
+        <label class="form-label">하한 (LSL)</label>
+        <input type="number" step="0.001" name="lsl" class="form-control" value="{{ item.lsl if item else '' }}" placeholder="예: 24.950">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">비고</label>
+        <textarea name="note" class="form-control">{{ item.note if item else '' }}</textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 저장</button>
+      <a href="{{ url_for('product_list') }}" class="btn btn-gray">취소</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

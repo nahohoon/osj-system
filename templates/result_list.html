@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}생산실적 / LOT — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>📊 생산실적 / LOT 관리</h2></div>
+<div class="content-header">
+  <form method="get" style="display:flex;gap:8px;align-items:center;">
+    <input type="month" name="date" value="{{ date_filter }}" class="form-control" style="width:160px;">
+    <button type="submit" class="btn btn-sm btn-primary">조회</button>
+  </form>
+  <a href="{{ url_for('result_new') }}" class="btn btn-accent">＋ 실적 입력</a>
+</div>
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr><th>LOT번호</th><th>실적일</th><th>품목</th><th>총생산</th>
+          <th>양품</th><th>불량</th><th>불량률</th><th>타수</th><th>작업자</th></tr>
+    </thead>
+    <tbody>
+    {% for r in results %}
+    {% set dr = (r.defect_qty / r.total_qty * 100) if r.total_qty else 0 %}
+    <tr>
+      <td><small class="txt-blue">{{ r.lot_no }}</small></td>
+      <td>{{ r.result_date }}</td>
+      <td>{{ r.work_order.plan.product.name if r.work_order and r.work_order.plan else '-' }}</td>
+      <td><strong>{{ "{:,}".format(r.total_qty) }}</strong></td>
+      <td class="txt-green">{{ "{:,}".format(r.good_qty) }}</td>
+      <td class="txt-red">{{ r.defect_qty }}</td>
+      <td class="{% if dr > 1 %}txt-red{% else %}txt-green{% endif %}">{{ "%.2f"|format(dr) }}%</td>
+      <td>{{ "{:,}".format(r.shot_count) }}</td>
+      <td>{{ r.worker or '-' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="empty-msg">실적 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

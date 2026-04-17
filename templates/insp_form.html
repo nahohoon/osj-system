@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% block title %}순회검사 등록 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header"><h2>🔍 순회검사 등록</h2></div>
+
+<div class="form-card">
+  <form method="post" id="inspForm">
+
+    <!-- ── 기본 정보 ──────────────────────────── -->
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">검사일 <span class="req">*</span></label>
+        <input type="date" name="insp_date" class="form-control" required value="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">검사시간</label>
+        <input type="time" name="insp_time" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">품목 <span class="req">*</span></label>
+        <select name="product_id" id="productSel" class="form-control" required onchange="loadDims(this.value)">
+          <option value="">-- 품목 선택 --</option>
+          {% for p in products %}
+          <option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">금형</label>
+        <select name="mold_id" class="form-control">
+          <option value="">-- 선택 --</option>
+          {% for m in molds %}
+          <option value="{{ m.id }}">{{ m.code }} — {{ m.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">LOT 번호</label>
+        <input type="text" name="lot_no" class="form-control" placeholder="LOT 번호 (선택)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">검사 유형</label>
+        <select name="insp_type" class="form-control">
+          {% for t in ['순회검사','초품검사','최종검사','수시검사'] %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">검사자</label>
+        <input type="text" name="inspector" class="form-control" value="대표">
+      </div>
+      <div class="form-group">
+        <label class="form-label">측정기</label>
+        <select name="tool_used" class="form-control">
+          {% for t in ['전자버니어캘리퍼스','마이크로미터','높이게이지','3점내경마이크로','한계게이지','기타'] %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">비고</label>
+        <textarea name="note" class="form-control" rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- ── 품목 기준치수 안내 박스 ─────────────── -->
+    <div id="dimBanner" class="dim-banner" style="display:none;">
+      <span class="dim-label">📐 품목 기준치수</span>
+      <span>기준치: <strong id="bNominal">—</strong></span>
+      <span>허용상한(USL): <strong id="bUsl" style="color:var(--red);">—</strong></span>
+      <span>허용하한(LSL): <strong id="bLsl" style="color:var(--blue,#2563eb);">—</strong></span>
+      <span>허용범위: <strong id="bTol">—</strong></span>
+    </div>
+
+    <!-- ── 검사 항목 테이블 ───────────────────── -->
+    <div class="section-divider">📋 검사 항목 입력 <span style="font-size:12px;font-weight:400;color:var(--text-lt);">(측정값 입력 시 실시간 PASS/FAIL 판정)</span></div>
+
+    <div class="content-card" style="margin-bottom:8px;">
+      <table class="data-table" id="itemTable">
+        <thead>
+          <tr>
+            <th style="width:36px;">#</th>
+            <th>검사 항목명 <span class="req">*</span></th>
+            <th style="width:110px;">기준치 (Nom)</th>
+            <th style="width:110px;">허용상한 USL</th>
+            <th style="width:110px;">허용하한 LSL</th>
+            <th style="width:120px;">실측값 <span class="req">*</span></th>
+            <th style="width:90px;">허용범위</th>
+            <th style="width:80px;">판정</th>
+            <th style="width:36px;"></th>
+          </tr>
+        </thead>
+        <tbody id="itemBody">
+          <!-- JS로 초기 3행 생성 -->
+        </tbody>
+      </table>
+    </div>
+    <button type="button" class="btn btn-sm btn-gray" onclick="addRow()">＋ 항목 추가</button>
+
+    <!-- ── 종합 판정 미리보기 ─────────────────── -->
+    <div id="overallBox" style="margin:16px 0;display:flex;align-items:center;gap:12px;">
+      <span class="form-label" style="margin:0;">종합 판정 예상:</span>
+      <span id="overallBadge" class="badge badge-plan" style="font-size:14px;padding:4px 18px;">—</span>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 검사 저장</button>
+      <a href="{{ url_for('insp_list') }}" class="btn btn-gray">취소</a>
+    </div>
+  </form>
+</div>
+
+<style>
+.dim-banner {
+  background: #eef6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+  padding: 10px 16px; margin: 12px 0; display: flex; gap: 20px; align-items: center;
+  flex-wrap: wrap; font-size: 13px;
+}
+.dim-label { font-weight: 700; color: var(--primary); }
+#itemTable input[type=number], #itemTable input[type=text] {
+  width: 100%; padding: 4px 6px; border: 1px solid var(--gray-bd);
+  border-radius: 4px; font-size: 13px; box-sizing: border-box;
+}
+#itemTable input.inp-measured { font-weight: 700; }
+.tol-hint { font-size: 11px; color: var(--text-lt); white-space: nowrap; }
+.judge-pass { color: #155724; background: #d4edda; font-weight: 700;
+              border-radius: 10px; padding: 2px 10px; font-size: 12px; }
+.judge-fail { color: #721c24; background: #f8d7da; font-weight: 700;
+              border-radius: 10px; padding: 2px 10px; font-size: 12px; }
+.judge-none { color: #6b7280; font-size: 12px; }
+</style>
+
+<script>
+/* ──────────────────────────────────────────
+   전역: 품목 기준치수 캐시
+───────────────────────────────────────── */
+let globalNom = null, globalUsl = null, globalLsl = null;
+
+function loadDims(pid) {
+  if (!pid) { document.getElementById('dimBanner').style.display='none'; return; }
+  fetch('/api/product/' + pid + '/dims')
+    .then(r => r.json())
+    .then(d => {
+      globalNom = d.nominal; globalUsl = d.usl; globalLsl = d.lsl;
+      const banner = document.getElementById('dimBanner');
+      if (d.nominal !== null || d.usl !== null || d.lsl !== null) {
+        banner.style.display = 'flex';
+        document.getElementById('bNominal').textContent = d.nominal ?? '—';
+        document.getElementById('bUsl').textContent     = d.usl     ?? '—';
+        document.getElementById('bLsl').textContent     = d.lsl     ?? '—';
+        if (d.usl !== null && d.lsl !== null)
+          document.getElementById('bTol').textContent = '±' + ((d.usl - d.lsl) / 2).toFixed(3)
+            + ' (' + d.lsl + ' ~ ' + d.usl + ')';
+        else document.getElementById('bTol').textContent = '—';
+        // 모든 기존 행에 기준치 자동 채움
+        document.querySelectorAll('#itemBody tr').forEach(tr => fillRowDims(tr));
+      } else {
+        banner.style.display = 'none';
+      }
+      updateOverall();
+    });
+}
+
+function fillRowDims(tr) {
+  const nomIn = tr.querySelector('.inp-nom');
+  const uslIn = tr.querySelector('.inp-usl');
+  const lslIn = tr.querySelector('.inp-lsl');
+  if (nomIn && !nomIn.value && globalNom !== null) nomIn.value = globalNom;
+  if (uslIn && !uslIn.value && globalUsl !== null) uslIn.value = globalUsl;
+  if (lslIn && !lslIn.value && globalLsl !== null) lslIn.value = globalLsl;
+  updateTolHint(tr);
+  judgeRow(tr);
+}
+
+/* ──────────────────────────────────────────
+   행 추가
+───────────────────────────────────────── */
+let rowIdx = 0;
+function addRow() {
+  const tbody = document.getElementById('itemBody');
+  const tr = document.createElement('tr');
+  tr.dataset.idx = rowIdx;
+  tr.innerHTML = `
+    <td style="text-align:center;color:var(--text-lt);">${rowIdx + 1}</td>
+    <td><input type="text" name="item_name" class="inp-name" placeholder="예: 전장 치수" required></td>
+    <td><input type="number" name="nominal"  class="inp-nom"  step="0.001" placeholder="—"
+               oninput="onDimChange(this)"></td>
+    <td><input type="number" name="usl"      class="inp-usl"  step="0.001" placeholder="—"
+               oninput="onDimChange(this)"></td>
+    <td><input type="number" name="lsl"      class="inp-lsl"  step="0.001" placeholder="—"
+               oninput="onDimChange(this)"></td>
+    <td><input type="number" name="measured" class="inp-measured" step="0.001" placeholder="실측 입력"
+               oninput="judgeRow(this.closest('tr')); updateOverall();"></td>
+    <td><span class="tol-hint" style="color:var(--text-lt);">—</span></td>
+    <td><span class="judge-badge judge-none">—</span></td>
+    <td><button type="button" class="btn-xs btn-red" onclick="removeRow(this)">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  // 품목 선택 돼 있으면 자동 채움
+  if (globalNom !== null || globalUsl !== null || globalLsl !== null) fillRowDims(tr);
+  rowIdx++;
+}
+
+function removeRow(btn) {
+  btn.closest('tr').remove();
+  updateOverall();
+}
+
+/* ──────────────────────────────────────────
+   치수 변경 시 허용범위 힌트 갱신
+───────────────────────────────────────── */
+function onDimChange(inp) {
+  const tr = inp.closest('tr');
+  updateTolHint(tr);
+  judgeRow(tr);
+  updateOverall();
+}
+
+function updateTolHint(tr) {
+  const usl = parseFloat(tr.querySelector('.inp-usl').value);
+  const lsl = parseFloat(tr.querySelector('.inp-lsl').value);
+  const hint = tr.querySelector('.tol-hint');
+  if (!isNaN(usl) && !isNaN(lsl)) {
+    hint.textContent = lsl + ' ~ ' + usl;
+    hint.style.color = 'var(--primary)';
+  } else if (!isNaN(usl)) {
+    hint.textContent = '≤ ' + usl;
+    hint.style.color = 'var(--primary)';
+  } else if (!isNaN(lsl)) {
+    hint.textContent = '≥ ' + lsl;
+    hint.style.color = 'var(--primary)';
+  } else {
+    hint.textContent = '—';
+    hint.style.color = 'var(--text-lt)';
+  }
+}
+
+/* ──────────────────────────────────────────
+   행별 실시간 PASS/FAIL 판정
+───────────────────────────────────────── */
+function judgeRow(tr) {
+  const msd = parseFloat(tr.querySelector('.inp-measured').value);
+  const usl = parseFloat(tr.querySelector('.inp-usl').value);
+  const lsl = parseFloat(tr.querySelector('.inp-lsl').value);
+  const badge = tr.querySelector('.judge-badge');
+
+  if (isNaN(msd)) {
+    badge.className = 'judge-badge judge-none'; badge.textContent = '—';
+    return null;
+  }
+  let pass = true;
+  if (!isNaN(usl) && msd > usl) pass = false;
+  if (!isNaN(lsl) && msd < lsl) pass = false;
+
+  const msdInp = tr.querySelector('.inp-measured');
+  if (pass) {
+    badge.className = 'judge-badge judge-pass'; badge.textContent = 'PASS';
+    msdInp.style.color = '#155724';
+  } else {
+    badge.className = 'judge-badge judge-fail'; badge.textContent = 'FAIL';
+    msdInp.style.color = '#721c24';
+  }
+  return pass;
+}
+
+/* ──────────────────────────────────────────
+   종합 판정 미리보기
+───────────────────────────────────────── */
+function updateOverall() {
+  const rows = document.querySelectorAll('#itemBody tr');
+  const badge = document.getElementById('overallBadge');
+  if (rows.length === 0) {
+    badge.className = 'badge badge-plan'; badge.textContent = '—'; return;
+  }
+  let overall = 'PASS';
+  for (const tr of rows) {
+    const msd = tr.querySelector('.inp-measured').value;
+    if (!msd) { overall = 'FAIL'; break; }     // 미입력 항목 존재
+    if (judgeRow(tr) === false) { overall = 'FAIL'; break; }
+  }
+  badge.className = 'badge ' + (overall === 'PASS' ? 'badge-pass' : 'badge-fail');
+  badge.textContent = overall;
+}
+
+// 초기 3행 생성
+addRow(); addRow(); addRow();
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}순회검사 목록 — 오성정공{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>🔍 순회검사 목록</h2>
+</div>
+
+<!-- KPI 요약 -->
+<div class="kpi-row" style="display:flex;gap:12px;margin-bottom:16px;">
+  <div class="kpi-card" style="flex:1;">
+    <div class="kpi-value">{{ total }}</div>
+    <div class="kpi-label">전체 검사</div>
+  </div>
+  <div class="kpi-card" style="flex:1;">
+    <div class="kpi-value txt-green">{{ passed }}</div>
+    <div class="kpi-label">PASS</div>
+  </div>
+  <div class="kpi-card" style="flex:1;">
+    <div class="kpi-value txt-red">{{ failed }}</div>
+    <div class="kpi-label">FAIL</div>
+  </div>
+  <div class="kpi-card" style="flex:1;">
+    <div class="kpi-value {% if pass_rate >= 95 %}txt-green{% elif pass_rate >= 85 %}txt-orange{% else %}txt-red{% endif %}">
+      {{ pass_rate }}%
+    </div>
+    <div class="kpi-label">합격률</div>
+  </div>
+</div>
+
+<div class="content-header">
+  <form method="get" style="display:flex;gap:8px;align-items:center;">
+    <label class="form-label" style="margin:0;">월 선택</label>
+    <input type="month" name="date" value="{{ date_filter }}" class="form-control" style="width:160px;">
+    <button type="submit" class="btn btn-sm btn-primary">조회</button>
+  </form>
+  <a href="{{ url_for('insp_new') }}" class="btn btn-accent">＋ 검사 등록</a>
+</div>
+
+<div class="content-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>검사번호</th><th>검사일</th><th>품목</th><th>금형</th>
+        <th>LOT</th><th>검사유형</th><th>검사자</th>
+        <th>PASS</th><th>FAIL</th><th>미측정</th>
+        <th>종합결과</th><th>관리</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for i in insps %}
+    {% set pass_cnt      = i.items | selectattr('result','eq','PASS')      | list | length %}
+    {% set fail_cnt      = i.items | selectattr('result','eq','FAIL')      | list | length %}
+    {% set unchk_cnt     = i.items | selectattr('result','eq','UNCHECKED') | list | length %}
+    <tr>
+      <td><small class="txt-blue">{{ i.insp_no }}</small></td>
+      <td>{{ i.insp_date }}</td>
+      <td>{{ i.product.name if i.product else '-' }}</td>
+      <td>{{ i.mold.code if i.mold else '-' }}</td>
+      <td><small>{{ i.lot_no or '-' }}</small></td>
+      <td>{{ i.insp_type }}</td>
+      <td>{{ i.inspector }}</td>
+      <td class="txt-green txt-bold">{{ pass_cnt }}</td>
+      <td class="txt-red txt-bold">{{ fail_cnt }}</td>
+      <td style="color:#92400e;font-weight:{% if unchk_cnt > 0 %}700{% else %}400{% endif %};">
+        {{ unchk_cnt }}
+      </td>
+      <td>
+        <span class="badge
+          {% if i.overall_result == 'PASS' %}badge-pass
+          {% else %}badge-fail{% endif %}" style="font-size:12px;">
+          {{ i.overall_result or '—' }}
+        </span>
+      </td>
+      <td>
+        <div class="btn-group">
+          <a href="{{ url_for('insp_detail', iid=i.id) }}" class="btn-xs btn-blue">상세</a>
+          <form method="post" action="{{ url_for('insp_delete', iid=i.id) }}" style="display:inline"
+                onsubmit="return confirm('삭제하시겠습니까?')">
+            <button type="submit" class="btn-xs btn-red">삭제</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="12" class="empty-msg">검사 내역이 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
