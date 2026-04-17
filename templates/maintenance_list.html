@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}정비이력 관리{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>정비이력 관리</h2>
+  <p>등록된 금형 정비이력 전체 목록입니다.</p>
+</div>
+
+<div class="content-card">
+  <h3>정비이력 목록</h3>
+
+  {% if maints %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>정비일</th>
+        <th>금형명</th>
+        <th>정비유형</th>
+        <th>타수</th>
+        <th>정비내용</th>
+        <th>작업자</th>
+        <th>비용</th>
+        <th>다음계획</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in maints %}
+      <tr>
+        <td>{{ m.maint_date }}</td>
+        <td>{{ m.mold.name if m.mold else '-' }}</td>
+        <td>{{ m.maint_type }}</td>
+        <td>{{ m.shot_at }}</td>
+        <td>{{ m.content }}</td>
+        <td>{{ m.worker }}</td>
+        <td>{{ m.cost }}</td>
+        <td>{{ m.next_plan }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>등록된 정비이력이 없습니다.</p>
+  {% endif %}
+</div>
+{% endblock %}

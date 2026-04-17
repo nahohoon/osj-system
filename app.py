@@ -241,7 +241,27 @@ def maint_delete(mnid):
     db.session.delete(mn); db.session.commit()
     flash('삭제되었습니다.', 'warning')
     return redirect(url_for('mold_detail', mid=mid))
+# ─────────────────────────────────────────────
+# 정비이력 전체 목록 (추가)
+# ─────────────────────────────────────────────
+@app.route('/maintenance')
+def maintenance_list():
+    maints = MoldMaintenance.query.order_by(
+        MoldMaintenance.maint_date.desc()
+    ).all()
 
+    total = len(maints)
+
+    from collections import Counter
+    type_cnt = Counter(m.maint_type for m in maints if m.maint_type)
+
+    return render_template(
+        'maintenance_list.html',
+        maints=maints,
+        total=total,
+        type_labels=list(type_cnt.keys()),
+        type_data=list(type_cnt.values())
+    )
 # ═══════════════════════════════════════════════
 # 생산관리 — 생산계획
 # ═══════════════════════════════════════════════
