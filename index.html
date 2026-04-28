@@ -1,0 +1,2229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="description" content="오성정공 금형기반 스마트 생산품질 관리시스템 데모">
+<title>오성정공 생산품질 관리시스템</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ============================================
+   CSS Variables & Reset
+   ============================================ */
+:root {
+  --primary: #1a3a5c;
+  --primary-light: #2d5a8e;
+  --accent: #e67e22;
+  --green: #27ae60;
+  --red: #e74c3c;
+  --orange: #f39c12;
+  --blue: #3498db;
+  --teal: #1abc9c;
+  --gray: #7f8c8d;
+  --bg: #f0f2f5;
+  --card-bg: #ffffff;
+  --text: #2c3e50;
+  --text-muted: #7f8c8d;
+  --border: #e0e0e0;
+  --sidebar-w: 230px;
+  --header-h: 54px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow-x:hidden;}
+a{text-decoration:none;color:inherit;}
+button{cursor:pointer;border:none;background:none;font-family:inherit;}
+input,select,textarea{font-family:inherit;}
+table{border-collapse:collapse;width:100%;}
+
+/* ============================================
+   Header
+   ============================================ */
+.top-header{
+  position:fixed;top:0;left:0;right:0;height:var(--header-h);
+  background:var(--primary);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;z-index:1000;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+}
+.header-left{display:flex;align-items:center;gap:10px;}
+.sidebar-toggle{
+  color:#fff;font-size:20px;padding:4px 8px;border-radius:4px;
+  background:rgba(255,255,255,0.1);
+  min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;
+}
+.sidebar-toggle:hover{background:rgba(255,255,255,0.2);}
+.brand{display:flex;align-items:center;gap:6px;line-height:1.2;}
+.brand-mark{font-size:20px;}
+.brand-ko{font-weight:700;font-size:15px;letter-spacing:-0.3px;}
+.brand-sub{font-size:11px;opacity:0.75;display:none;}
+@media(min-width:600px){.brand-sub{display:inline;}}
+.header-right{display:flex;align-items:center;gap:10px;}
+.alert-badge{
+  background:rgba(231,76,60,0.85);color:#fff;padding:4px 10px;
+  border-radius:20px;font-size:12px;font-weight:600;
+  animation:blink 1.5s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.6;}}
+.today-label{font-size:12px;opacity:0.8;display:none;}
+@media(min-width:480px){.today-label{display:inline;}}
+
+/* ============================================
+   Sidebar
+   ============================================ */
+.sidebar{
+  position:fixed;top:var(--header-h);left:0;bottom:0;
+  width:var(--sidebar-w);background:var(--primary);
+  overflow-y:auto;z-index:900;
+  transition:transform 0.25s ease;
+  display:flex;flex-direction:column;
+}
+.sidebar.collapsed{transform:translateX(-100%);}
+.nav-menu{list-style:none;padding:8px 0;flex:1;}
+.nav-section{
+  padding:12px 16px 4px;font-size:11px;font-weight:700;
+  color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.8px;
+  display:flex;align-items:center;gap:6px;
+}
+.section-num{
+  background:rgba(255,255,255,0.15);color:#fff;
+  border-radius:50%;width:18px;height:18px;font-size:10px;
+  display:flex;align-items:center;justify-content:center;
+}
+.nav-item a{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;color:rgba(255,255,255,0.8);
+  border-radius:0;transition:all .15s;
+  min-height:44px;
+}
+.nav-item a:hover{background:rgba(255,255,255,0.1);color:#fff;}
+.nav-item.active a{
+  background:rgba(255,255,255,0.18);color:#fff;font-weight:600;
+  border-left:3px solid var(--accent);
+}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.nav-text{font-size:13px;}
+.badge-red{
+  background:var(--red);color:#fff;border-radius:10px;
+  font-size:10px;padding:1px 6px;font-weight:700;
+}
+.sidebar-footer{
+  padding:12px 16px;border-top:1px solid rgba(255,255,255,0.1);
+  margin-top:auto;
+}
+.sidebar-version{font-size:11px;color:rgba(255,255,255,0.4);}
+.sidebar-concept{font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;}
+
+/* sidebar overlay (mobile) */
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);
+  z-index:850;
+}
+.sidebar-overlay.active{display:block;}
+
+/* ============================================
+   Main Content
+   ============================================ */
+.main-content{
+  margin-top:var(--header-h);margin-left:var(--sidebar-w);
+  padding:20px;min-height:calc(100vh - var(--header-h));
+  transition:margin-left .25s ease;
+  padding-bottom:90px;
+}
+.main-content.expanded{margin-left:0;}
+@media(max-width:768px){
+  .main-content{margin-left:0;padding:12px;padding-bottom:90px;}
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+}
+
+/* ============================================
+   Page Header
+   ============================================ */
+.page-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:16px;flex-wrap:wrap;gap:8px;
+}
+.page-header h2{font-size:18px;font-weight:700;color:var(--primary);}
+.sub-text{font-size:12px;color:var(--text-muted);display:block;margin-top:2px;}
+
+/* ============================================
+   Content Header (filter + actions row)
+   ============================================ */
+.content-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;flex-wrap:wrap;gap:8px;
+}
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+/* ============================================
+   Cards
+   ============================================ */
+.content-card{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;}
+.dash-card{background:var(--card-bg);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;}
+.card-header{
+  padding:10px 14px;font-size:13px;font-weight:600;
+  background:#f8f9fa;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;
+}
+.card-body{padding:14px;}
+.card-body.p0{padding:0;}
+.card-footer{
+  padding:8px 12px;border-top:1px solid var(--border);
+  display:flex;gap:6px;background:#fafafa;
+}
+
+/* ============================================
+   KPI Cards
+   ============================================ */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+@media(min-width:600px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+.kpi-card{
+  background:var(--card-bg);border-radius:8px;padding:14px 12px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+  border-left:4px solid var(--blue);
+}
+.kpi-card.kpi-blue{border-left-color:var(--blue);}
+.kpi-card.kpi-green{border-left-color:var(--green);}
+.kpi-card.kpi-red{border-left-color:var(--red);}
+.kpi-card.kpi-orange{border-left-color:var(--orange);}
+.kpi-card.kpi-teal{border-left-color:var(--teal);}
+.kpi-label{font-size:11px;color:var(--text-muted);margin-bottom:4px;}
+.kpi-value{font-size:26px;font-weight:700;line-height:1.1;}
+.kpi-unit{font-size:11px;color:var(--text-muted);margin-top:2px;}
+
+/* ============================================
+   Dashboard Grid
+   ============================================ */
+.dash-grid2{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px;}
+@media(min-width:768px){.dash-grid2{grid-template-columns:1fr 1fr;}}
+.dash-grid3{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px;}
+@media(min-width:900px){.dash-grid3{grid-template-columns:1fr 1fr 1fr;}}
+
+/* Flow Banner */
+.flow-banner{
+  background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);
+  display:flex;align-items:center;justify-content:center;
+  padding:12px 16px;margin-bottom:14px;
+  gap:8px;flex-wrap:wrap;
+}
+.flow-step{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:70px;}
+.flow-icon{font-size:20px;}
+.flow-label{font-size:10px;color:var(--text-muted);}
+.flow-val{font-size:12px;font-weight:700;}
+.flow-arrow{font-size:18px;color:var(--text-muted);}
+.step-alert .flow-val,.txt-red{color:var(--red)!important;}
+.txt-green{color:var(--green)!important;}
+.txt-blue{color:var(--blue)!important;}
+.txt-bold{font-weight:700!important;}
+.txt-orange{color:var(--orange)!important;}
+
+/* ============================================
+   Tables
+   ============================================ */
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table th{
+  padding:9px 10px;background:#f4f6fa;font-weight:600;font-size:12px;
+  color:#555;text-align:left;border-bottom:2px solid var(--border);
+  white-space:nowrap;
+}
+.data-table td{
+  padding:9px 10px;border-bottom:1px solid #f0f0f0;vertical-align:middle;
+}
+.data-table tr:hover td{background:#fafbff;}
+.data-table tr.row-alert td{background:#fff5f5;}
+.mini-table{width:100%;border-collapse:collapse;font-size:12px;}
+.mini-table th{
+  padding:7px 10px;background:#f4f6fa;font-size:11px;font-weight:600;
+  color:#555;border-bottom:1px solid var(--border);white-space:nowrap;
+}
+.mini-table td{padding:7px 10px;border-bottom:1px solid #f5f5f5;vertical-align:middle;}
+.mini-table tr:hover td{background:#fafbff;}
+.empty-msg{text-align:center;padding:24px;color:var(--text-muted);font-size:13px;}
+.table-responsive{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+/* ============================================
+   Badges
+   ============================================ */
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:10px;
+  font-size:11px;font-weight:600;white-space:nowrap;
+}
+.badge-pass{background:#d4edda;color:#155724;}
+.badge-fail{background:#f8d7da;color:#721c24;}
+.badge-done{background:#d4edda;color:#155724;}
+.badge-ing{background:#cce5ff;color:#004085;}
+.badge-plan{background:#fff3cd;color:#856404;}
+.badge-cancel{background:#f8d7da;color:#721c24;}
+.badge-normal{background:#d4edda;color:#155724;}
+.badge-repair{background:#f8d7da;color:#721c24;}
+.badge-check{background:#fff3cd;color:#856404;}
+.badge-pm{background:#fee2e2;color:#991b1b;}
+.badge-prevent{background:#dbeafe;color:#1e40af;}
+.badge-urgent{background:#fee2e2;color:#991b1b;}
+.badge-routine{background:#dcfce7;color:#166534;}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;
+  transition:all .15s;min-height:36px;border:none;cursor:pointer;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-light);}
+.btn-accent{background:var(--accent);color:#fff;}
+.btn-accent:hover{background:#d35400;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#219a52;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{background:#f0f0f0;}
+.btn-sm{padding:5px 10px;font-size:12px;min-height:30px;}
+.btn-xs{padding:3px 8px;font-size:11px;min-height:26px;border-radius:4px;font-weight:600;}
+.btn-xs.btn-blue{background:var(--blue);color:#fff;}
+.btn-xs.btn-gray{background:#95a5a6;color:#fff;}
+.btn-xs.btn-green{background:var(--green);color:#fff;}
+.btn-xs.btn-red{background:var(--red);color:#fff;}
+.btn-xs.btn-accent{background:var(--accent);color:#fff;}
+.btn-group{display:flex;gap:4px;flex-wrap:wrap;}
+
+/* ============================================
+   Forms
+   ============================================ */
+.form-control{
+  width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;
+  font-size:13px;background:#fff;color:var(--text);
+  transition:border-color .15s;min-height:38px;
+}
+.form-control:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(52,152,219,.15);}
+.form-group{margin-bottom:14px;}
+.form-label{display:block;margin-bottom:4px;font-size:12px;font-weight:600;color:#555;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:480px){.form-row{grid-template-columns:1fr;}}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+.form-card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px;}
+
+/* ============================================
+   Progress Bar
+   ============================================ */
+.prog-wrap{height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden;display:inline-block;width:80px;}
+.prog-bar{height:100%;border-radius:4px;transition:width .3s;}
+
+/* ============================================
+   Section Divider
+   ============================================ */
+.section-divider{
+  font-size:13px;font-weight:700;color:var(--primary);
+  padding:12px 0 8px;border-bottom:2px solid var(--primary);
+  margin-bottom:12px;margin-top:20px;
+}
+
+/* ============================================
+   Modal
+   ============================================ */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+  z-index:2000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;
+}
+.modal-overlay.active{display:flex;}
+.modal{
+  background:#fff;border-radius:10px;width:100%;max-width:520px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);margin:auto;
+}
+.modal-header{
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.modal-header h3{font-size:16px;font-weight:700;}
+.modal-close{font-size:20px;color:var(--text-muted);padding:4px 8px;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:20px;}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
+/* ============================================
+   Toast
+   ============================================ */
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  background:rgba(44,62,80,0.95);color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:13px;z-index:3000;opacity:0;transition:opacity .3s;pointer-events:none;
+  white-space:nowrap;
+}
+#toast.show{opacity:1;}
+
+/* ============================================
+   Mobile Bottom Tab
+   ============================================ */
+.bottom-tab{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;height:60px;
+  background:#fff;border-top:1px solid var(--border);
+  box-shadow:0 -2px 8px rgba(0,0,0,.08);
+  z-index:950;
+}
+.bottom-tab-inner{
+  display:flex;height:100%;
+}
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;font-size:10px;color:var(--text-muted);
+  transition:color .15s;padding:4px 0;
+  border:none;background:none;cursor:pointer;
+}
+.tab-btn.active{color:var(--primary);}
+.tab-btn .tab-icon{font-size:18px;}
+@media(max-width:768px){
+  .bottom-tab{display:block;}
+  .main-content{padding-bottom:80px;}
+}
+
+/* ============================================
+   Responsive Table (mobile card view)
+   ============================================ */
+@media(max-width:600px){
+  .data-table thead{display:none;}
+  .data-table tr{
+    display:block;background:#fff;margin-bottom:8px;
+    border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);
+    border-left:3px solid var(--blue);
+  }
+  .data-table tr.row-alert{border-left-color:var(--red);}
+  .data-table td{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:7px 12px;border-bottom:1px solid #f5f5f5;font-size:12px;
+  }
+  .data-table td::before{
+    content:attr(data-label);font-weight:600;color:var(--text-muted);
+    font-size:11px;min-width:80px;flex-shrink:0;
+  }
+  .data-table td:last-child{border-bottom:none;}
+}
+@media(max-width:600px){
+  .mini-table{font-size:12px;}
+}
+
+/* ============================================
+   Misc
+   ============================================ */
+.ml-5{margin-left:5px;}
+.ml-auto{margin-left:auto;}
+canvas{max-width:100%;}
+small{font-size:11px;color:var(--text-muted);}
+strong{font-weight:700;}
+.text-right{text-align:right;}
+.text-center{text-align:center;}
+.font-mono{font-family:monospace;}
+.mt-2{margin-top:8px;}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- ▶ Toast -->
+<div id="toast"></div>
+
+<!-- ▶ Sidebar Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ▶ Header -->
+<header class="top-header">
+  <div class="header-left">
+    <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="메뉴">☰</button>
+    <span class="brand">
+      <span class="brand-mark">⬡</span>
+      <span class="brand-ko">오성정공</span>
+      <span class="brand-sub">금형기반 스마트 생산품질 관리시스템</span>
+    </span>
+  </div>
+  <div class="header-right">
+    <a href="#" class="alert-badge" onclick="navigate('mold-list');return false;" id="pmAlertBadge" style="display:none;">
+      🔔 PM 알림 <strong id="pmAlertCount">0</strong>건
+    </a>
+    <span class="today-label">📅 <span id="todayLabel"></span></span>
+  </div>
+</header>
+
+<!-- ▶ Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <ul class="nav-menu">
+    <li class="nav-item" data-page="dashboard">
+      <a href="#" onclick="navigate('dashboard');return false;">
+        <span class="nav-icon">🏠</span><span class="nav-text">스마트 대시보드</span>
+      </a>
+    </li>
+    <li class="nav-section"><span class="section-num">①</span> 생산관리</li>
+    <li class="nav-item" data-page="plan-list">
+      <a href="#" onclick="navigate('plan-list');return false;">
+        <span class="nav-icon">📋</span><span class="nav-text">생산계획</span>
+      </a>
+    </li>
+    <li class="nav-item" data-page="wo-list">
+      <a href="#" onclick="navigate('wo-list');return false;">
+        <span class="nav-icon">▶</span><span class="nav-text">작업지시</span>
+      </a>
+    </li>
+    <li class="nav-item" data-page="result-list">
+      <a href="#" onclick="navigate('result-list');return false;">
+        <span class="nav-icon">📊</span><span class="nav-text">생산실적 · LOT</span>
+      </a>
+    </li>
+    <li class="nav-item" data-page="defect-list">
+      <a href="#" onclick="navigate('defect-list');return false;">
+        <span class="nav-icon">⚠</span><span class="nav-text">불량 등록</span>
+      </a>
+    </li>
+    <li class="nav-section">
+      <span class="section-num">②</span> 금형관리
+      <span class="badge-red ml-auto hidden" id="sidebarPmBadge">PM 0</span>
+    </li>
+    <li class="nav-item" data-page="mold-list">
+      <a href="#" onclick="navigate('mold-list');return false;">
+        <span class="nav-icon">🔩</span><span class="nav-text">금형 현황</span>
+        <span class="badge-red ml-auto hidden" id="sidebarPmBadge2">0</span>
+      </a>
+    </li>
+    <li class="nav-item" data-page="maintenance-list">
+      <a href="#" onclick="navigate('maintenance-list');return false;">
+        <span class="nav-icon">🔧</span><span class="nav-text">정비이력 관리</span>
+      </a>
+    </li>
+    <li class="nav-section"><span class="section-num">③</span> 품질혁신</li>
+    <li class="nav-item" data-page="insp-list">
+      <a href="#" onclick="navigate('insp-list');return false;">
+        <span class="nav-icon">🔍</span><span class="nav-text">순회검사</span>
+      </a>
+    </li>
+    <li class="nav-item" data-page="quality-trend">
+      <a href="#" onclick="navigate('quality-trend');return false;">
+        <span class="nav-icon">📈</span><span class="nav-text">품질 트렌드 분석</span>
+      </a>
+    </li>
+    <li class="nav-section" style="margin-top:16px;">기준정보</li>
+    <li class="nav-item" data-page="product-list">
+      <a href="#" onclick="navigate('product-list');return false;">
+        <span class="nav-icon">📦</span><span class="nav-text">품목 (치수기준)</span>
+      </a>
+    </li>
+  </ul>
+  <div class="sidebar-footer">
+    <div class="sidebar-version">v2.0 · 데모 (GitHub Pages)</div>
+    <div class="sidebar-concept">금형 → 생산 → 품질 연계</div>
+  </div>
+</nav>
+
+<!-- ▶ Main Content -->
+<main class="main-content" id="mainContent">
+  <div id="app"></div>
+</main>
+
+<!-- ▶ Mobile Bottom Tab -->
+<div class="bottom-tab">
+  <div class="bottom-tab-inner">
+    <button class="tab-btn" data-page="dashboard" onclick="navigate('dashboard')">
+      <span class="tab-icon">🏠</span><span>대시보드</span>
+    </button>
+    <button class="tab-btn" data-page="plan-list" onclick="navigate('plan-list')">
+      <span class="tab-icon">📋</span><span>생산계획</span>
+    </button>
+    <button class="tab-btn" data-page="mold-list" onclick="navigate('mold-list')">
+      <span class="tab-icon">🔩</span><span>금형</span>
+    </button>
+    <button class="tab-btn" data-page="insp-list" onclick="navigate('insp-list')">
+      <span class="tab-icon">🔍</span><span>순회검사</span>
+    </button>
+    <button class="tab-btn" data-page="quality-trend" onclick="navigate('quality-trend')">
+      <span class="tab-icon">📈</span><span>품질분석</span>
+    </button>
+  </div>
+</div>
+
+<!-- ▶ Modals Container -->
+<div id="modals"></div>
+
+<script>
+/* ============================================
+   SAMPLE DATA (LocalStorage-backed)
+   ============================================ */
+const TODAY = new Date();
+function fmt(d,offset=0){
+  const dt=new Date(d); dt.setDate(dt.getDate()+offset);
+  return dt.toISOString().split('T')[0];
+}
+const T = fmt(TODAY);
+
+/* ── 기준 데이터 ── */
+const INIT_PRODUCTS = [
+  {id:1,code:'HMC-A001',name:'도어 인너패널 LH',customer:'현대자동차',unit:'EA',cycle:45,nominal:150.0,usl:150.5,lsl:149.5},
+  {id:2,code:'HMC-A002',name:'도어 인너패널 RH',customer:'현대자동차',unit:'EA',cycle:45,nominal:150.0,usl:150.5,lsl:149.5},
+  {id:3,code:'HMC-B001',name:'프론트 범퍼 브라켓',customer:'현대자동차',unit:'EA',cycle:38,nominal:82.5,usl:83.0,lsl:82.0},
+  {id:4,code:'KIA-C001',name:'리어 도어 힌지',customer:'기아자동차',unit:'EA',cycle:52,nominal:45.2,usl:45.5,lsl:44.9},
+  {id:5,code:'HMC-D001',name:'센터 콘솔 브라켓',customer:'현대자동차',unit:'EA',cycle:30,nominal:220.0,usl:220.8,lsl:219.2},
+];
+const INIT_MOLDS = [
+  {id:1,code:'M-2401',name:'도어 인너패널 LH',product_code:'HMC-A001',owner:'현대자동차',material:'SKD11',cavity:2,life_shot:500000,pm_interval:50000,current_shot:385000,location:'A-01',status:'정상',reg_date:'2024-01-15'},
+  {id:2,code:'M-2402',name:'도어 인너패널 RH',product_code:'HMC-A002',owner:'현대자동차',material:'SKD11',cavity:2,life_shot:500000,pm_interval:50000,current_shot:472000,location:'A-02',status:'정상',reg_date:'2024-01-15'},
+  {id:3,code:'M-2403',name:'프론트 범퍼 브라켓',product_code:'HMC-B001',owner:'현대자동차',material:'SKD61',cavity:4,life_shot:300000,pm_interval:30000,current_shot:128500,location:'B-03',status:'정상',reg_date:'2024-03-10'},
+  {id:4,code:'M-2404',name:'리어 도어 힌지',product_code:'KIA-C001',owner:'기아자동차',material:'NAK80',cavity:1,life_shot:200000,pm_interval:20000,current_shot:18200,location:'B-04',status:'점검중',reg_date:'2024-05-20'},
+  {id:5,code:'M-2405',name:'센터 콘솔 브라켓',product_code:'HMC-D001',owner:'현대자동차',material:'S45C',cavity:2,life_shot:400000,pm_interval:40000,current_shot:397500,location:'C-01',status:'정상',reg_date:'2024-02-01'},
+];
+const INIT_PLANS = [
+  {id:1,plan_date:fmt(TODAY,-5),product_id:1,mold_id:1,plan_qty:2000,shift:'주간',status:'완료',remark:''},
+  {id:2,plan_date:fmt(TODAY,-4),product_id:2,mold_id:2,plan_qty:1800,shift:'주간',status:'완료',remark:''},
+  {id:3,plan_date:fmt(TODAY,-3),product_id:3,mold_id:3,plan_qty:3200,shift:'야간',status:'완료',remark:'긴급수주'},
+  {id:4,plan_date:fmt(TODAY,-1),product_id:1,mold_id:1,plan_qty:2500,shift:'주간',status:'진행',remark:''},
+  {id:5,plan_date:fmt(TODAY,0),product_id:2,mold_id:2,plan_qty:2000,shift:'주간',status:'예정',remark:''},
+  {id:6,plan_date:fmt(TODAY,1),product_id:5,mold_id:5,plan_qty:4000,shift:'야간',status:'예정',remark:''},
+];
+const INIT_WOS = [
+  {id:1,wo_no:'WO-240501',plan_id:1,ordered_qty:2000,start_dt:fmt(TODAY,-5)+' 08:00',end_dt:fmt(TODAY,-5)+' 18:30',status:'완료',remark:''},
+  {id:2,wo_no:'WO-240502',plan_id:2,ordered_qty:1800,start_dt:fmt(TODAY,-4)+' 08:00',end_dt:fmt(TODAY,-4)+' 17:45',status:'완료',remark:''},
+  {id:3,wo_no:'WO-240503',plan_id:3,ordered_qty:3200,start_dt:fmt(TODAY,-3)+' 20:00',end_dt:fmt(TODAY,-2)+' 06:00',status:'완료',remark:''},
+  {id:4,wo_no:'WO-240504',plan_id:4,ordered_qty:2500,start_dt:fmt(TODAY,-1)+' 08:00',end_dt:null,status:'진행',remark:''},
+  {id:5,wo_no:'WO-240505',plan_id:5,ordered_qty:2000,start_dt:null,end_dt:null,status:'대기',remark:''},
+];
+const INIT_RESULTS = [
+  {id:1,wo_id:1,result_date:fmt(TODAY,-5),total_qty:2000,good_qty:1972,defect_qty:28,shot_count:1000,worker:'김철수',remark:''},
+  {id:2,wo_id:2,result_date:fmt(TODAY,-4),total_qty:1800,good_qty:1785,defect_qty:15,shot_count:900,worker:'이영희',remark:''},
+  {id:3,wo_id:3,result_date:fmt(TODAY,-3),total_qty:3200,good_qty:3154,defect_qty:46,shot_count:800,worker:'박민준',remark:'긴급'},
+  {id:4,wo_id:4,result_date:fmt(TODAY,-1),total_qty:1200,good_qty:1185,defect_qty:15,shot_count:600,worker:'김철수',remark:''},
+];
+const INIT_DEFECTS = [
+  {id:1,defect_date:fmt(TODAY,-5),lot_no:'LOT-240501',product_id:1,mold_id:1,defect_type:'치수불량',defect_qty:12,worker:'김철수',cause:'금형 마모',action:'금형 클리닝 실시'},
+  {id:2,defect_date:fmt(TODAY,-5),lot_no:'LOT-240501',product_id:1,mold_id:1,defect_type:'플래시',defect_qty:8,worker:'김철수',cause:'사출 압력 과다',action:'성형 조건 재설정'},
+  {id:3,defect_date:fmt(TODAY,-4),lot_no:'LOT-240502',product_id:2,mold_id:2,defect_type:'수축',defect_qty:10,worker:'이영희',cause:'냉각 시간 부족',action:'냉각 시간 5초 증가'},
+  {id:4,defect_date:fmt(TODAY,-4),lot_no:'LOT-240502',product_id:2,mold_id:2,defect_type:'웰드라인',defect_qty:5,worker:'이영희',cause:'게이트 위치 문제',action:'금형 수정 검토'},
+  {id:5,defect_date:fmt(TODAY,-3),lot_no:'LOT-240503',product_id:3,mold_id:3,defect_type:'치수불량',defect_qty:28,worker:'박민준',cause:'이형불량',action:'이형제 도포'},
+  {id:6,defect_date:fmt(TODAY,-3),lot_no:'LOT-240503',product_id:3,mold_id:3,defect_type:'버',defect_qty:18,worker:'박민준',cause:'금형 파팅라인 마모',action:'파팅라인 연마'},
+  {id:7,defect_date:fmt(TODAY,-1),lot_no:'LOT-240504',product_id:1,mold_id:1,defect_type:'치수불량',defect_qty:15,worker:'김철수',cause:'온도변화',action:'온도 모니터링 강화'},
+];
+const INIT_MAINTS = [
+  {id:1,mold_id:2,maint_date:fmt(TODAY,-20),maint_type:'예방정비',shot_at:450000,worker:'정비팀',cost:350000,next_plan:fmt(TODAY,10),content:'파팅라인 연마, 이젝터 핀 교체, 냉각수 라인 청소'},
+  {id:2,mold_id:1,maint_date:fmt(TODAY,-15),maint_type:'정기점검',shot_at:370000,worker:'정비팀',cost:0,next_plan:fmt(TODAY,20),content:'금형 표면 상태 점검, 코어 확인'},
+  {id:3,mold_id:5,maint_date:fmt(TODAY,-10),maint_type:'긴급수리',shot_at:395000,worker:'외주업체',cost:1200000,next_plan:fmt(TODAY,5),content:'코어 균열 발생 - 긴급 용접 수리 및 열처리'},
+  {id:4,mold_id:3,maint_date:fmt(TODAY,-8),maint_type:'예방정비',shot_at:120000,worker:'정비팀',cost:180000,next_plan:fmt(TODAY,15),content:'슬라이드 코어 윤활, 스프링 점검'},
+  {id:5,mold_id:2,maint_date:fmt(TODAY,-3),maint_type:'정기점검',shot_at:468000,worker:'정비팀',cost:0,next_plan:fmt(TODAY,30),content:'전체 점검 — 수명율 93.6% 주의'},
+];
+const INIT_INSPS = [
+  {id:1,insp_no:'INS-240501',insp_date:fmt(TODAY,-5),insp_time:'10:30',product_id:1,mold_id:1,lot_no:'LOT-240501',insp_type:'순회검사',inspector:'품질팀',gauge:'마이크로미터',overall_result:'PASS',
+    items:[{name:'외경A',nominal:150.0,usl:150.5,lsl:149.5,value:150.1,result:'PASS'},{name:'외경B',nominal:150.0,usl:150.5,lsl:149.5,value:150.2,result:'PASS'},{name:'높이',nominal:82.5,usl:83.0,lsl:82.0,value:82.4,result:'PASS'}]},
+  {id:2,insp_no:'INS-240502',insp_date:fmt(TODAY,-4),insp_time:'14:15',product_id:2,mold_id:2,lot_no:'LOT-240502',insp_type:'수시검사',inspector:'김철수',gauge:'버니어캘리퍼스',overall_result:'FAIL',
+    items:[{name:'외경A',nominal:150.0,usl:150.5,lsl:149.5,value:150.6,result:'FAIL'},{name:'외경B',nominal:150.0,usl:150.5,lsl:149.5,value:150.3,result:'PASS'},{name:'높이',nominal:82.5,usl:83.0,lsl:82.0,value:82.6,result:'PASS'}]},
+  {id:3,insp_no:'INS-240503',insp_date:fmt(TODAY,-3),insp_time:'09:00',product_id:3,mold_id:3,lot_no:'LOT-240503',insp_type:'순회검사',inspector:'품질팀',gauge:'CMM',overall_result:'PASS',
+    items:[{name:'길이',nominal:82.5,usl:83.0,lsl:82.0,value:82.7,result:'PASS'},{name:'폭',nominal:45.2,usl:45.5,lsl:44.9,value:45.1,result:'PASS'}]},
+  {id:4,insp_no:'INS-240504',insp_date:fmt(TODAY,-2),insp_time:'11:30',product_id:1,mold_id:1,lot_no:'LOT-240504',insp_type:'최초검사',inspector:'이영희',gauge:'마이크로미터',overall_result:'PASS',
+    items:[{name:'외경A',nominal:150.0,usl:150.5,lsl:149.5,value:150.0,result:'PASS'},{name:'외경B',nominal:150.0,usl:150.5,lsl:149.5,value:149.9,result:'PASS'}]},
+  {id:5,insp_no:'INS-240505',insp_date:fmt(TODAY,-1),insp_time:'15:45',product_id:2,mold_id:2,lot_no:'LOT-240504',insp_type:'순회검사',inspector:'품질팀',gauge:'버니어캘리퍼스',overall_result:'PASS',
+    items:[{name:'외경A',nominal:150.0,usl:150.5,lsl:149.5,value:150.2,result:'PASS'},{name:'높이',nominal:82.5,usl:83.0,lsl:82.0,value:82.8,result:'PASS'}]},
+];
+
+/* ── Storage helpers ── */
+function load(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch{return def;}}
+function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch{}}
+function getData(key,def){return load('osj_'+key,def);}
+function setData(key,val){save('osj_'+key,val);}
+function getNextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
+
+/* ── Initialize default data (only if first visit) ── */
+function initData(){
+  if(!localStorage.getItem('osj_initialized')){
+    setData('products',INIT_PRODUCTS);
+    setData('molds',INIT_MOLDS);
+    setData('plans',INIT_PLANS);
+    setData('wos',INIT_WOS);
+    setData('results',INIT_RESULTS);
+    setData('defects',INIT_DEFECTS);
+    setData('maints',INIT_MAINTS);
+    setData('insps',INIT_INSPS);
+    localStorage.setItem('osj_initialized','1');
+  }
+}
+
+/* ── Computed helpers ── */
+function getMoldById(id){return getData('molds',INIT_MOLDS).find(m=>m.id===id);}
+function getProductById(id){return getData('products',INIT_PRODUCTS).find(p=>p.id===id);}
+function getPlanById(id){return getData('plans',INIT_PLANS).find(p=>p.id===id);}
+function getWoById(id){return getData('wos',INIT_WOS).find(w=>w.id===id);}
+function lifeRate(m){return m.life_shot>0?Math.round(m.current_shot/m.life_shot*100):0;}
+function pmRemaining(m){
+  const next = Math.ceil(m.current_shot/m.pm_interval)*m.pm_interval;
+  return next - m.current_shot;
+}
+function pmAlert(m){return pmRemaining(m)<=5000;}
+
+/* ============================================
+   ROUTING / SPA
+   ============================================ */
+let currentPage='dashboard';
+let chartInstances={};
+
+function destroyCharts(){
+  Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch{}});
+  chartInstances={};
+}
+
+function navigate(page, params={}){
+  destroyCharts();
+  currentPage=page;
+  // update active states
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.classList.toggle('active',el.dataset.page===page);
+  });
+  document.querySelectorAll('.tab-btn').forEach(el=>{
+    el.classList.toggle('active',el.dataset.page===page);
+  });
+  // close sidebar on mobile
+  if(window.innerWidth<=768) closeSidebar();
+  render();
+}
+
+function render(){
+  const app=document.getElementById('app');
+  updatePmAlerts();
+  switch(currentPage){
+    case 'dashboard': app.innerHTML=renderDashboard(); break;
+    case 'plan-list': app.innerHTML=renderPlanList(); break;
+    case 'plan-form': app.innerHTML=renderPlanForm(window._editId); break;
+    case 'wo-list': app.innerHTML=renderWoList(); break;
+    case 'wo-detail': app.innerHTML=renderWoDetail(window._detailId); break;
+    case 'result-list': app.innerHTML=renderResultList(); break;
+    case 'defect-list': app.innerHTML=renderDefectList(); break;
+    case 'mold-list': app.innerHTML=renderMoldList(); break;
+    case 'mold-detail': app.innerHTML=renderMoldDetail(window._detailId); break;
+    case 'maintenance-list': app.innerHTML=renderMaintenanceList(); break;
+    case 'insp-list': app.innerHTML=renderInspList(); break;
+    case 'insp-detail': app.innerHTML=renderInspDetail(window._detailId); break;
+    case 'quality-trend': app.innerHTML=renderQualityTrend(); break;
+    case 'product-list': app.innerHTML=renderProductList(); break;
+    default: app.innerHTML=renderDashboard();
+  }
+  // init charts after render
+  requestAnimationFrame(()=>{initPageCharts();});
+}
+
+function updatePmAlerts(){
+  const molds=getData('molds',INIT_MOLDS);
+  const cnt=molds.filter(pmAlert).length;
+  const badge=document.getElementById('pmAlertBadge');
+  const cnt1=document.getElementById('pmAlertCount');
+  const b1=document.getElementById('sidebarPmBadge');
+  const b2=document.getElementById('sidebarPmBadge2');
+  if(badge){badge.style.display=cnt>0?'':'none'; if(cnt1)cnt1.textContent=cnt;}
+  if(b1){b1.classList.toggle('hidden',cnt===0);b1.textContent='PM '+cnt;}
+  if(b2){b2.classList.toggle('hidden',cnt===0);b2.textContent=cnt;}
+}
+
+/* ============================================
+   HELPERS
+   ============================================ */
+function fmtNum(n){return(n||0).toLocaleString();}
+function badgeClass(status){
+  const map={'완료':'badge-done','진행':'badge-ing','대기':'badge-plan','취소':'badge-cancel',
+    '예정':'badge-plan','PASS':'badge-pass','FAIL':'badge-fail',
+    '정상':'badge-normal','수리중':'badge-repair','점검중':'badge-check'};
+  return map[status]||'badge-plan';
+}
+function progColor(rate){
+  if(rate>80) return '#e74c3c';
+  if(rate>60) return '#f39c12';
+  return '#27ae60';
+}
+function progBar(rate){
+  const r=Math.min(rate,100);
+  return `<div class="prog-wrap"><div class="prog-bar" style="width:${r}%;background:${progColor(rate)};"></div></div><small>${rate}%</small>`;
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ============================================
+   SIDEBAR TOGGLE
+   ============================================ */
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  const mc=document.getElementById('mainContent');
+  if(window.innerWidth>768){
+    sb.classList.toggle('collapsed');
+    mc.classList.toggle('expanded');
+  } else {
+    sb.classList.toggle('open');
+    ov.classList.toggle('active');
+  }
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
+/* ============================================
+   PAGE: DASHBOARD
+   ============================================ */
+function renderDashboard(){
+  const molds=getData('molds',INIT_MOLDS);
+  const results=getData('results',INIT_RESULTS);
+  const defects=getData('defects',INIT_DEFECTS);
+  const insps=getData('insps',INIT_INSPS);
+  const wos=getData('wos',INIT_WOS);
+  const plans=getData('plans',INIT_PLANS);
+
+  const todayResults=results.filter(r=>r.result_date===T);
+  const todayTotal=todayResults.reduce((s,r)=>s+r.total_qty,0);
+  const todayGood=todayResults.reduce((s,r)=>s+r.good_qty,0);
+  const todayDefect=todayResults.reduce((s,r)=>s+r.defect_qty,0);
+  const defectRate=todayTotal>0?(todayDefect/todayTotal*100).toFixed(2):0;
+  const pmAlerts=molds.filter(pmAlert);
+  const activeWo=wos.filter(w=>w.status==='진행');
+  const recentInsps=insps.slice().sort((a,b)=>b.insp_date.localeCompare(a.insp_date)).slice(0,5);
+  const recentDefects=defects.slice().sort((a,b)=>b.defect_date.localeCompare(a.defect_date)).slice(0,5);
+
+  // 7일 추이 데이터
+  const trend=[];
+  for(let i=6;i>=0;i--){
+    const d=fmt(TODAY,-i);
+    const dr=results.filter(r=>r.result_date===d);
+    trend.push({date:d.slice(5),good:dr.reduce((s,r)=>s+r.good_qty,0),defect:dr.reduce((s,r)=>s+r.defect_qty,0)});
+  }
+
+  // 금형 수명 현황 (상위 5개)
+  const moldQuality=molds.map(m=>{
+    const lr=lifeRate(m);
+    const pr=pmRemaining(m);
+    const mDefects=defects.filter(d=>d.mold_id===m.id);
+    const mResults=results.filter(r=>{
+      const wo=getWoById(r.wo_id);
+      if(!wo)return false;
+      const pl=getPlanById(wo.plan_id);
+      return pl&&pl.mold_id===m.id;
+    });
+    const mTotal=mResults.reduce((s,r)=>s+r.total_qty,0);
+    const mDefect=mDefects.reduce((s,d)=>s+d.defect_qty,0);
+    const dr=mTotal>0?(mDefect/mTotal*100).toFixed(1):0;
+    return {...m,life_rate:lr,pm_remaining:pr,pm_alert:pmAlert(m),defect_rate:dr};
+  }).slice(0,5);
+
+  return `
+<div class="page-header">
+  <div>
+    <h2>🏠 스마트 대시보드</h2>
+    <span class="sub-text">금형 상태 × 생산 × 품질 통합 현황 (${T})</span>
+  </div>
+</div>
+
+<!-- 핵심 플로우 배너 -->
+<div class="flow-banner">
+  <div class="flow-step">
+    <span class="flow-icon">🔩</span>
+    <span class="flow-label">금형 상태</span>
+    <span class="flow-val ${pmAlerts.length>0?'txt-red':'txt-green'}">${pmAlerts.length>0?'PM '+pmAlerts.length+'건 필요':'전체 정상'}</span>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <span class="flow-icon">⚙️</span>
+    <span class="flow-label">오늘 생산</span>
+    <span class="flow-val">${fmtNum(todayTotal)} EA</span>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">
+    <span class="flow-icon">🔍</span>
+    <span class="flow-label">순회검사</span>
+    <span class="flow-val">오늘 ${insps.filter(i=>i.insp_date===T).length}건</span>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step ${parseFloat(defectRate)>1?'step-alert':''}">
+    <span class="flow-icon">📊</span>
+    <span class="flow-label">불량률</span>
+    <span class="flow-val ${parseFloat(defectRate)>1?'txt-red':'txt-green'}">${defectRate}%</span>
+  </div>
+</div>
+
+<!-- KPI -->
+<div class="kpi-grid">
+  <div class="kpi-card kpi-blue"><div class="kpi-label">오늘 총 생산</div><div class="kpi-value">${fmtNum(todayTotal)}</div><div class="kpi-unit">EA</div></div>
+  <div class="kpi-card kpi-green"><div class="kpi-label">오늘 양품</div><div class="kpi-value">${fmtNum(todayGood)}</div><div class="kpi-unit">EA</div></div>
+  <div class="kpi-card kpi-red"><div class="kpi-label">오늘 불량</div><div class="kpi-value">${fmtNum(todayDefect)}</div><div class="kpi-unit">EA</div></div>
+  <div class="kpi-card ${parseFloat(defectRate)>1?'kpi-orange':'kpi-teal'}"><div class="kpi-label">불량률 (오늘)</div><div class="kpi-value">${defectRate}</div><div class="kpi-unit">%</div></div>
+</div>
+
+<div class="dash-grid2">
+  <div class="dash-card">
+    <div class="card-header">📊 주간 생산 추이 (최근 7일)</div>
+    <div class="card-body" style="height:190px;"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div class="dash-card">
+    <div class="card-header">🔩 금형 수명 현황 ${pmAlerts.length>0?`<span class="badge-red ml-5">PM ${pmAlerts.length}건</span>`:''}</div>
+    <div class="card-body p0">
+      ${pmAlerts.length>0?`<div style="padding:8px 12px;background:#fff5f5;border-bottom:1px solid #fdd;font-size:12px;color:#c0392b;font-weight:600;">🔔 예방정비 즉시 필요 — ${pmAlerts.length}개 금형</div>`:''}
+      <div class="table-responsive">
+      <table class="mini-table">
+        <thead><tr><th>금형</th><th>수명율</th><th>PM잔여</th><th>상태</th></tr></thead>
+        <tbody>
+        ${moldQuality.map(m=>`
+        <tr ${m.pm_alert?'class="row-alert"':''}>
+          <td><strong>${m.code}</strong><br><small>${m.name.slice(0,8)}</small></td>
+          <td>${progBar(m.life_rate)}</td>
+          <td class="${m.pm_alert?'txt-red txt-bold':''}">${m.pm_alert?'⚠ PM 필요':fmtNum(m.pm_remaining)}</td>
+          <td><span class="badge ${badgeClass(m.status)}">${m.status}</span></td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid3">
+  <div class="dash-card">
+    <div class="card-header">▶ 진행중 작업지시</div>
+    <div class="card-body p0">
+      ${activeWo.length?`
+      <div class="table-responsive">
+      <table class="mini-table">
+        <thead><tr><th>WO번호</th><th>품목</th><th>금형</th></tr></thead>
+        <tbody>
+        ${activeWo.map(w=>{
+          const pl=getPlanById(w.plan_id)||{};
+          const prod=getProductById(pl.product_id)||{};
+          const mold=getMoldById(pl.mold_id)||{};
+          return `<tr><td><small>${w.wo_no}</small></td><td>${prod.name||'-'}</td><td><strong>${mold.code||'-'}</strong></td></tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+      </div>`:`<div class="empty-msg">진행중 작업 없음</div>`}
+    </div>
+    <div class="card-footer"><button class="btn-sm btn-outline" onclick="navigate('wo-list')">전체보기</button></div>
+  </div>
+
+  <div class="dash-card">
+    <div class="card-header">🔍 최근 순회검사</div>
+    <div class="card-body p0">
+      <div class="table-responsive">
+      <table class="mini-table">
+        <thead><tr><th>일시</th><th>품목</th><th>금형</th><th>결과</th></tr></thead>
+        <tbody>
+        ${recentInsps.map(i=>{
+          const prod=getProductById(i.product_id)||{};
+          const mold=getMoldById(i.mold_id)||{};
+          return `<tr><td><small>${i.insp_date}<br>${i.insp_time}</small></td><td>${(prod.name||'-').slice(0,8)}</td><td>${mold.code||'-'}</td><td><span class="badge ${badgeClass(i.overall_result)}">${i.overall_result}</span></td></tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="btn-sm btn-outline" onclick="navigate('insp-list')">전체</button>
+      <button class="btn-sm btn-accent" onclick="openInspForm()" style="margin-left:6px;">＋ 등록</button>
+    </div>
+  </div>
+
+  <div class="dash-card">
+    <div class="card-header">⚠ 최근 불량 (금형 연계)</div>
+    <div class="card-body p0">
+      <div class="table-responsive">
+      <table class="mini-table">
+        <thead><tr><th>발생일</th><th>유형</th><th>금형</th><th>수량</th></tr></thead>
+        <tbody>
+        ${recentDefects.map(d=>{
+          const mold=getMoldById(d.mold_id)||{};
+          return `<tr><td>${d.defect_date}</td><td><span class="badge badge-fail" style="font-size:10px;">${d.defect_type}</span></td><td class="txt-bold">${mold.code||'-'}</td><td class="txt-red txt-bold">${d.defect_qty}</td></tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <div class="card-footer"><button class="btn-sm btn-outline" onclick="navigate('defect-list')">전체</button></div>
+  </div>
+</div>
+
+<script>
+window._dashTrend=${JSON.stringify(trend)};
+<\/script>`;
+}
+
+function initPageCharts(){
+  if(currentPage==='dashboard') initDashboardCharts();
+  if(currentPage==='defect-list') initDefectChart();
+  if(currentPage==='quality-trend') initQualityCharts();
+}
+function initDashboardCharts(){
+  const trend=window._dashTrend||[];
+  const ctx=document.getElementById('trendChart');
+  if(!ctx)return;
+  chartInstances.trend=new Chart(ctx.getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:trend.map(d=>d.date),
+      datasets:[
+        {label:'양품',data:trend.map(d=>d.good),backgroundColor:'rgba(39,174,96,0.75)',borderRadius:4},
+        {label:'불량',data:trend.map(d=>d.defect),backgroundColor:'rgba(231,76,60,0.75)',borderRadius:4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11}}}},
+      scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}
+  });
+}
+
+/* ============================================
+   PAGE: 생산계획
+   ============================================ */
+function renderPlanList(){
+  const plans=getData('plans',INIT_PLANS);
+  const sorted=plans.slice().sort((a,b)=>b.plan_date.localeCompare(a.plan_date));
+  return `
+<div class="page-header">
+  <div><h2>📋 생산계획</h2></div>
+  <button class="btn btn-accent" onclick="navigate('plan-form');window._editId=null;">＋ 계획 등록</button>
+</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>계획일</th><th>품번/품명</th><th>사용금형</th><th>계획수량</th><th>교대</th><th>상태</th><th>관리</th></tr></thead>
+    <tbody>
+    ${sorted.length?sorted.map(p=>{
+      const prod=getProductById(p.product_id)||{};
+      const mold=getMoldById(p.mold_id)||{};
+      return `<tr>
+        <td data-label="계획일">${p.plan_date}</td>
+        <td data-label="품목"><strong>${prod.code||'-'}</strong><br><small>${prod.name||''}</small></td>
+        <td data-label="사용금형">${mold.code||'-'}</td>
+        <td data-label="계획수량">${fmtNum(p.plan_qty)} EA</td>
+        <td data-label="교대">${p.shift}</td>
+        <td data-label="상태"><span class="badge ${badgeClass(p.status)}">${p.status}</span></td>
+        <td data-label="관리">
+          <div class="btn-group">
+            <button class="btn-xs btn-blue" onclick="editPlan(${p.id})">수정</button>
+            <button class="btn-xs btn-red" onclick="deletePlan(${p.id})">삭제</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="7" class="empty-msg">등록된 생산계획이 없습니다.</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function editPlan(id){window._editId=id;navigate('plan-form');}
+function deletePlan(id){
+  if(!confirm('생산계획을 삭제하시겠습니까?'))return;
+  const plans=getData('plans',INIT_PLANS).filter(p=>p.id!==id);
+  setData('plans',plans);showToast('생산계획이 삭제되었습니다.');navigate('plan-list');
+}
+function renderPlanForm(editId){
+  const plans=getData('plans',INIT_PLANS);
+  const products=getData('products',INIT_PRODUCTS);
+  const molds=getData('molds',INIT_MOLDS);
+  const plan=editId?plans.find(p=>p.id===editId):null;
+  return `
+<div class="page-header">
+  <h2>📋 생산계획 ${plan?'수정':'등록'}</h2>
+</div>
+<div class="form-card">
+  <form onsubmit="savePlan(event,${editId||'null'})">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">계획일 *</label>
+        <input type="date" class="form-control" name="plan_date" value="${plan?plan.plan_date:T}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">교대 *</label>
+        <select class="form-control" name="shift" required>
+          ${['주간','야간','전일'].map(s=>`<option value="${s}" ${plan&&plan.shift===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">품목 *</label>
+        <select class="form-control" name="product_id" required>
+          <option value="">-- 선택 --</option>
+          ${products.map(p=>`<option value="${p.id}" ${plan&&plan.product_id===p.id?'selected':''}>${p.code} - ${p.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">사용 금형 *</label>
+        <select class="form-control" name="mold_id" required>
+          <option value="">-- 선택 --</option>
+          ${molds.map(m=>`<option value="${m.id}" ${plan&&plan.mold_id===m.id?'selected':''}>${m.code} - ${m.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">계획수량 *</label>
+        <input type="number" class="form-control" name="plan_qty" value="${plan?plan.plan_qty:''}" placeholder="EA" required min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">상태</label>
+        <select class="form-control" name="status">
+          ${['예정','진행','완료'].map(s=>`<option value="${s}" ${plan&&plan.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">비고</label>
+      <input type="text" class="form-control" name="remark" value="${plan?plan.remark||'':''}">
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-outline" onclick="navigate('plan-list')">취소</button>
+      <button type="submit" class="btn btn-primary">저장</button>
+    </div>
+  </form>
+</div>`;
+}
+function savePlan(e,editId){
+  e.preventDefault();
+  const fd=new FormData(e.target);
+  const plans=getData('plans',INIT_PLANS);
+  const obj={
+    id:editId||getNextId(plans),
+    plan_date:fd.get('plan_date'),
+    product_id:parseInt(fd.get('product_id')),
+    mold_id:parseInt(fd.get('mold_id')),
+    plan_qty:parseInt(fd.get('plan_qty')),
+    shift:fd.get('shift'),
+    status:fd.get('status'),
+    remark:fd.get('remark')
+  };
+  if(editId){const i=plans.findIndex(p=>p.id===editId);plans[i]=obj;}
+  else plans.unshift(obj);
+  setData('plans',plans);showToast(editId?'수정되었습니다.':'생산계획이 등록되었습니다.');navigate('plan-list');
+}
+
+/* ============================================
+   PAGE: 작업지시
+   ============================================ */
+function renderWoList(){
+  const wos=getData('wos',INIT_WOS);
+  const sorted=wos.slice().sort((a,b)=>b.wo_no.localeCompare(a.wo_no));
+  return `
+<div class="page-header">
+  <div><h2>⚙️ 작업지시</h2></div>
+  <button class="btn btn-accent" onclick="openWoForm()">＋ 작업지시 생성</button>
+</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>WO번호</th><th>계획일/품목</th><th>금형</th><th>지시수량</th><th>시작일시</th><th>완료일시</th><th>상태</th><th>변경</th><th>상세</th></tr></thead>
+    <tbody>
+    ${sorted.length?sorted.map(w=>{
+      const pl=getPlanById(w.plan_id)||{};
+      const prod=getProductById(pl.product_id)||{};
+      const mold=getMoldById(pl.mold_id)||{};
+      return `<tr>
+        <td data-label="WO번호"><strong>${w.wo_no}</strong></td>
+        <td data-label="계획/품목">${pl.plan_date||'-'}<br><small>${prod.name||'-'}</small></td>
+        <td data-label="금형">${mold.code||'-'}</td>
+        <td data-label="지시수량">${fmtNum(w.ordered_qty)}</td>
+        <td data-label="시작">${w.start_dt||'-'}</td>
+        <td data-label="완료">${w.end_dt||'-'}</td>
+        <td data-label="상태"><span class="badge ${badgeClass(w.status)}">${w.status}</span></td>
+        <td data-label="변경">
+          ${w.status==='대기'?`<button class="btn-xs btn-blue" onclick="changeWoStatus(${w.id},'진행')">▶ 시작</button>`:''}
+          ${w.status==='진행'?`<button class="btn-xs btn-green" onclick="changeWoStatus(${w.id},'완료')">✔ 완료</button>`:''}
+        </td>
+        <td data-label="상세"><button class="btn-xs btn-gray" onclick="window._detailId=${w.id};navigate('wo-detail')">📄 상세</button></td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="9" class="empty-msg">작업지시 없음</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function changeWoStatus(id,status){
+  const wos=getData('wos',INIT_WOS);
+  const i=wos.findIndex(w=>w.id===id);
+  if(i<0)return;
+  wos[i].status=status;
+  if(status==='진행') wos[i].start_dt=T+' '+new Date().toTimeString().slice(0,5);
+  if(status==='완료') wos[i].end_dt=T+' '+new Date().toTimeString().slice(0,5);
+  setData('wos',wos);showToast(`상태가 '${status}'으로 변경되었습니다.`);navigate('wo-list');
+}
+function openWoForm(){
+  const plans=getData('plans',INIT_PLANS);
+  const availPlans=plans.filter(p=>p.status!=='완료');
+  let html=`<form onsubmit="saveWo(event)">
+    <div class="form-group"><label class="form-label">생산계획 선택 *</label>
+    <select class="form-control" name="plan_id" required>
+      <option value="">-- 선택 --</option>
+      ${availPlans.map(p=>{
+        const prod=getProductById(p.product_id)||{};
+        const mold=getMoldById(p.mold_id)||{};
+        return `<option value="${p.id}">${p.plan_date} | ${prod.name||''} | ${mold.code||''}</option>`;
+      }).join('')}
+    </select></div>
+    <div class="form-group"><label class="form-label">지시수량 *</label>
+    <input type="number" class="form-control" name="ordered_qty" required min="1" placeholder="EA"></div>
+    <div class="form-group"><label class="form-label">시작 예정일시</label>
+    <input type="datetime-local" class="form-control" name="start_dt" value="${T}T08:00"></div>
+    <div class="form-group"><label class="form-label">비고</label>
+    <input type="text" class="form-control" name="remark"></div>`;
+  showModal('⚙️ 작업지시 생성',html,'saveWo');
+}
+function saveWo(e){
+  e&&e.preventDefault();
+  const f=e?e.target:document.querySelector('#modals form');
+  if(!f)return;
+  const wos=getData('wos',INIT_WOS);
+  const nextN=getNextId(wos);
+  const pad=String(nextN).padStart(6,'0');
+  const d=new Date(); const mm=String(d.getMonth()+1).padStart(2,'0');
+  const obj={
+    id:nextN,wo_no:`WO-${d.getFullYear().toString().slice(2)}${mm}${pad.slice(-2)}`,
+    plan_id:parseInt(f.plan_id.value),
+    ordered_qty:parseInt(f.ordered_qty.value),
+    start_dt:f.start_dt?f.start_dt.value||null:null,
+    end_dt:null,status:'대기',remark:f.remark?f.remark.value:''
+  };
+  wos.unshift(obj);setData('wos',wos);closeModal();showToast('작업지시가 생성되었습니다.');navigate('wo-list');
+}
+function renderWoDetail(id){
+  const wos=getData('wos',INIT_WOS);
+  const w=wos.find(x=>x.id===id)||wos[0];
+  if(!w)return '<div class="empty-msg">작업지시를 찾을 수 없습니다.</div>';
+  const pl=getPlanById(w.plan_id)||{};
+  const prod=getProductById(pl.product_id)||{};
+  const mold=getMoldById(pl.mold_id)||{};
+  const results=getData('results',INIT_RESULTS).filter(r=>r.wo_id===w.id);
+  return `
+<div class="page-header">
+  <h2>📄 작업지시서 — ${w.wo_no}</h2>
+  <button class="btn btn-outline" onclick="navigate('wo-list')">← 목록</button>
+</div>
+<div class="form-card" style="margin-bottom:14px;">
+  <div class="form-row">
+    <div><label class="form-label">WO번호</label><strong>${w.wo_no}</strong></div>
+    <div><label class="form-label">상태</label><span class="badge ${badgeClass(w.status)}">${w.status}</span></div>
+  </div>
+  <div class="form-row" style="margin-top:12px;">
+    <div><label class="form-label">품목</label>${prod.name||'-'} (${prod.code||'-'})</div>
+    <div><label class="form-label">금형</label>${mold.code||'-'} — ${mold.name||'-'}</div>
+  </div>
+  <div class="form-row" style="margin-top:12px;">
+    <div><label class="form-label">지시수량</label>${fmtNum(w.ordered_qty)} EA</div>
+    <div><label class="form-label">계획일</label>${pl.plan_date||'-'}</div>
+  </div>
+</div>
+<div class="section-divider">📊 LOT별 생산 실적</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>실적일</th><th>총생산</th><th>양품</th><th>불량</th><th>타수</th><th>작업자</th></tr></thead>
+    <tbody>
+    ${results.length?results.map(r=>`
+      <tr>
+        <td>${r.result_date}</td><td>${fmtNum(r.total_qty)}</td>
+        <td class="txt-green">${fmtNum(r.good_qty)}</td>
+        <td class="txt-red">${fmtNum(r.defect_qty)}</td>
+        <td>${fmtNum(r.shot_count)}</td><td>${r.worker}</td>
+      </tr>`).join(''):`<tr><td colspan="6" class="empty-msg">실적 없음</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+
+/* ============================================
+   PAGE: 생산실적
+   ============================================ */
+function renderResultList(){
+  const results=getData('results',INIT_RESULTS);
+  const sorted=results.slice().sort((a,b)=>b.result_date.localeCompare(a.result_date));
+  return `
+<div class="page-header">
+  <div><h2>📊 생산실적 · LOT</h2></div>
+  <button class="btn btn-accent" onclick="openResultForm()">＋ 실적 입력</button>
+</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>실적일</th><th>작업지시</th><th>품목</th><th>총생산</th><th>양품</th><th>불량</th><th>불량률</th><th>타수</th><th>작업자</th></tr></thead>
+    <tbody>
+    ${sorted.length?sorted.map(r=>{
+      const wo=getWoById(r.wo_id)||{};
+      const pl=getPlanById(wo.plan_id)||{};
+      const prod=getProductById(pl.product_id)||{};
+      const dr=r.total_qty>0?(r.defect_qty/r.total_qty*100).toFixed(2):0;
+      return `<tr>
+        <td data-label="실적일">${r.result_date}</td>
+        <td data-label="작업지시"><small>${wo.wo_no||'-'}</small></td>
+        <td data-label="품목">${prod.name||'-'}</td>
+        <td data-label="총생산">${fmtNum(r.total_qty)}</td>
+        <td data-label="양품" class="txt-green">${fmtNum(r.good_qty)}</td>
+        <td data-label="불량" class="txt-red">${fmtNum(r.defect_qty)}</td>
+        <td data-label="불량률" class="${parseFloat(dr)>1?'txt-red':'txt-green'}">${dr}%</td>
+        <td data-label="타수">${fmtNum(r.shot_count)}</td>
+        <td data-label="작업자">${r.worker}</td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="9" class="empty-msg">생산실적 없음</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function openResultForm(){
+  const wos=getData('wos',INIT_WOS).filter(w=>w.status==='진행'||w.status==='완료');
+  let html=`<form onsubmit="saveResult(event)">
+    <div class="form-group"><label class="form-label">작업지시 *</label>
+    <select class="form-control" name="wo_id" required>
+      <option value="">-- 선택 --</option>
+      ${wos.map(w=>{const pl=getPlanById(w.plan_id)||{};const prod=getProductById(pl.product_id)||{};
+        return `<option value="${w.id}">${w.wo_no} | ${prod.name||''}</option>`;}).join('')}
+    </select></div>
+    <div class="form-group"><label class="form-label">실적일 *</label>
+    <input type="date" class="form-control" name="result_date" value="${T}" required></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">양품수량 *</label><input type="number" class="form-control" name="good_qty" required min="0"></div>
+      <div class="form-group"><label class="form-label">불량수량</label><input type="number" class="form-control" name="defect_qty" value="0" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">금형 타수</label><input type="number" class="form-control" name="shot_count" min="0"></div>
+      <div class="form-group"><label class="form-label">작업자 *</label><input type="text" class="form-control" name="worker" required></div>
+    </div>
+    <div class="form-group"><label class="form-label">비고</label><input type="text" class="form-control" name="remark"></div>`;
+  showModal('📊 생산실적 입력',html,'saveResult');
+}
+function saveResult(e){
+  e&&e.preventDefault();
+  const f=e?e.target:document.querySelector('#modals form');
+  if(!f)return;
+  const results=getData('results',INIT_RESULTS);
+  const good=parseInt(f.good_qty.value)||0;
+  const defect=parseInt(f.defect_qty.value)||0;
+  const obj={
+    id:getNextId(results),
+    wo_id:parseInt(f.wo_id.value),
+    result_date:f.result_date.value,
+    good_qty:good,defect_qty:defect,total_qty:good+defect,
+    shot_count:parseInt(f.shot_count.value)||0,
+    worker:f.worker.value,remark:f.remark?f.remark.value:''
+  };
+  results.unshift(obj);setData('results',results);closeModal();showToast('생산실적이 등록되었습니다.');navigate('result-list');
+}
+
+/* ============================================
+   PAGE: 불량관리
+   ============================================ */
+function renderDefectList(){
+  const defects=getData('defects',INIT_DEFECTS);
+  const sorted=defects.slice().sort((a,b)=>b.defect_date.localeCompare(a.defect_date));
+  // 유형별 집계
+  const typeMap={};
+  defects.forEach(d=>{typeMap[d.defect_type]=(typeMap[d.defect_type]||0)+d.defect_qty;});
+  const typeLabels=Object.keys(typeMap);
+  const typeData=Object.values(typeMap);
+  return `
+<div class="page-header">
+  <div><h2>⚠️ 불량 관리</h2></div>
+  <button class="btn btn-accent" onclick="openDefectForm()">＋ 불량 등록</button>
+</div>
+${typeLabels.length?`
+<div class="dash-card" style="margin-bottom:16px;padding:14px;">
+  <div class="card-header">불량 유형별 집계</div>
+  <div class="card-body" style="height:180px;"><canvas id="defectChart"></canvas></div>
+</div>
+<script>window._defectTypeLabels=${JSON.stringify(typeLabels)};window._defectTypeData=${JSON.stringify(typeData)};<\/script>`:''}
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>발생일</th><th>LOT</th><th>품목</th><th>금형</th><th>불량유형</th><th>불량수</th><th>원인</th><th>조치</th></tr></thead>
+    <tbody>
+    ${sorted.length?sorted.map(d=>{
+      const prod=getProductById(d.product_id)||{};
+      const mold=getMoldById(d.mold_id)||{};
+      return `<tr>
+        <td data-label="발생일">${d.defect_date}</td>
+        <td data-label="LOT"><small>${d.lot_no||'-'}</small></td>
+        <td data-label="품목">${prod.name||'-'}</td>
+        <td data-label="금형">${mold.code||'-'}</td>
+        <td data-label="불량유형"><span class="badge badge-fail">${d.defect_type}</span></td>
+        <td data-label="불량수" class="txt-red txt-bold">${d.defect_qty}</td>
+        <td data-label="원인"><small>${(d.cause||'').slice(0,20)}</small></td>
+        <td data-label="조치"><small>${(d.action||'').slice(0,20)}</small></td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="8" class="empty-msg">불량 기록 없음</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function initDefectChart(){
+  const ctx=document.getElementById('defectChart');
+  if(!ctx)return;
+  chartInstances.defect=new Chart(ctx.getContext('2d'),{
+    type:'bar',
+    data:{labels:window._defectTypeLabels||[],datasets:[{label:'불량수',data:window._defectTypeData||[],backgroundColor:'rgba(231,76,60,0.75)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+  });
+}
+function openDefectForm(){
+  const products=getData('products',INIT_PRODUCTS);
+  const molds=getData('molds',INIT_MOLDS);
+  const defectTypes=['치수불량','플래시','수축','웰드라인','버','크랙','표면불량','기타'];
+  let html=`<form onsubmit="saveDefect(event)">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">발생일 *</label><input type="date" class="form-control" name="defect_date" value="${T}" required></div>
+      <div class="form-group"><label class="form-label">LOT 번호</label><input type="text" class="form-control" name="lot_no"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">품목 *</label>
+      <select class="form-control" name="product_id" required>
+        <option value="">-- 선택 --</option>
+        ${products.map(p=>`<option value="${p.id}">${p.code} - ${p.name}</option>`).join('')}
+      </select></div>
+      <div class="form-group"><label class="form-label">금형 *</label>
+      <select class="form-control" name="mold_id" required>
+        <option value="">-- 선택 --</option>
+        ${molds.map(m=>`<option value="${m.id}">${m.code}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">불량유형 *</label>
+      <select class="form-control" name="defect_type" required>
+        ${defectTypes.map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select></div>
+      <div class="form-group"><label class="form-label">불량수량 *</label><input type="number" class="form-control" name="defect_qty" required min="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">작업자</label><input type="text" class="form-control" name="worker"></div>
+    </div>
+    <div class="form-group"><label class="form-label">불량 원인</label><textarea class="form-control" name="cause" rows="2"></textarea></div>
+    <div class="form-group"><label class="form-label">조치 사항</label><textarea class="form-control" name="action" rows="2"></textarea></div>`;
+  showModal('⚠️ 불량 등록',html,'saveDefect');
+}
+function saveDefect(e){
+  e&&e.preventDefault();
+  const f=e?e.target:document.querySelector('#modals form');
+  if(!f)return;
+  const defects=getData('defects',INIT_DEFECTS);
+  const obj={
+    id:getNextId(defects),defect_date:f.defect_date.value,
+    lot_no:f.lot_no?f.lot_no.value:'',
+    product_id:parseInt(f.product_id.value),
+    mold_id:parseInt(f.mold_id.value),
+    defect_type:f.defect_type.value,
+    defect_qty:parseInt(f.defect_qty.value),
+    worker:f.worker?f.worker.value:'',
+    cause:f.cause?f.cause.value:'',
+    action:f.action?f.action.value:''
+  };
+  defects.unshift(obj);setData('defects',defects);closeModal();showToast('불량이 등록되었습니다.');navigate('defect-list');
+}
+
+/* ============================================
+   PAGE: 금형 현황
+   ============================================ */
+function renderMoldList(){
+  const molds=getData('molds',INIT_MOLDS);
+  const pmMolds=molds.filter(pmAlert);
+  return `
+<div class="page-header">
+  <div><h2>🔩 금형 현황</h2><span class="sub-text">현대자동차 지급 금형 수명 및 정비 통합 관리</span></div>
+  <button class="btn btn-accent" onclick="openMoldForm()">＋ 금형 등록</button>
+</div>
+${pmMolds.length?`
+<div class="dash-card" style="margin-bottom:14px;border-left:4px solid var(--red);">
+  <div class="card-header" style="color:var(--red);">🔔 PM 긴급 알림 — ${pmMolds.length}건 (잔여 타수 5,000 이하)</div>
+  <div class="card-body p0">
+    <div class="table-responsive">
+    <table class="mini-table">
+      <thead><tr><th>금형코드</th><th>금형명</th><th>현재타수</th><th>다음PM잔여</th><th>수명율</th></tr></thead>
+      <tbody>
+      ${pmMolds.map(m=>{const lr=lifeRate(m);const pr=pmRemaining(m);return `
+        <tr>
+          <td><strong>${m.code}</strong></td><td>${m.name}</td>
+          <td>${fmtNum(m.current_shot)}</td>
+          <td class="txt-red txt-bold">${fmtNum(pr)}</td>
+          <td>${lr}%</td>
+        </tr>`;}).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>`:''}
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>금형코드</th><th>금형명</th><th>적용품번</th><th>소유</th><th>누적타수</th><th>수명</th><th>수명율</th><th>PM잔여</th><th>상태</th><th>관리</th></tr></thead>
+    <tbody>
+    ${molds.length?molds.map(m=>{
+      const lr=lifeRate(m);const pr=pmRemaining(m);const alert=pmAlert(m);
+      return `<tr ${alert?'class="row-alert"':''}>
+        <td data-label="코드"><strong>${m.code}</strong></td>
+        <td data-label="금형명">${m.name}</td>
+        <td data-label="품번">${m.product_code||'-'}</td>
+        <td data-label="소유">${m.owner}</td>
+        <td data-label="누적타수">${fmtNum(m.current_shot)}</td>
+        <td data-label="수명">${fmtNum(m.life_shot)}</td>
+        <td data-label="수명율">${progBar(lr)}</td>
+        <td data-label="PM잔여" class="${alert?'txt-red txt-bold':''}">${fmtNum(pr)}${alert?' 🔔':''}</td>
+        <td data-label="상태"><span class="badge ${badgeClass(m.status)}">${m.status}</span></td>
+        <td data-label="관리">
+          <div class="btn-group">
+            <button class="btn-xs btn-blue" onclick="window._detailId=${m.id};navigate('mold-detail')">상세</button>
+            <button class="btn-xs btn-gray" onclick="openMoldForm(${m.id})">수정</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="10" class="empty-msg">등록된 금형이 없습니다.</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function renderMoldDetail(id){
+  const molds=getData('molds',INIT_MOLDS);
+  const m=molds.find(x=>x.id===id)||molds[0];
+  if(!m)return '<div class="empty-msg">금형을 찾을 수 없습니다.</div>';
+  const lr=lifeRate(m);const pr=pmRemaining(m);const alert=pmAlert(m);
+  const maints=getData('maints',INIT_MAINTS).filter(x=>x.mold_id===m.id).sort((a,b)=>b.maint_date.localeCompare(a.maint_date));
+  return `
+<div class="page-header">
+  <h2>🔩 금형 상세 — ${m.code}</h2>
+  <button class="btn btn-outline" onclick="navigate('mold-list')">← 목록</button>
+</div>
+${alert?`<div style="background:#fff5f5;border:1px solid #fdd;border-radius:8px;padding:10px 14px;margin-bottom:14px;color:var(--red);font-weight:600;">🔔 PM 점검 필요 — 잔여 타수 ${fmtNum(pr)} (5,000 이하)</div>`:''}
+<div class="dash-grid2" style="margin-bottom:14px;">
+  <div class="form-card">
+    <div class="section-divider" style="margin-top:0;">기본 정보</div>
+    <div class="form-row">
+      <div><label class="form-label">금형코드</label><strong>${m.code}</strong></div>
+      <div><label class="form-label">금형명</label>${m.name}</div>
+    </div>
+    <div class="form-row" style="margin-top:10px;">
+      <div><label class="form-label">적용품번</label>${m.product_code||'-'}</div>
+      <div><label class="form-label">소유자</label>${m.owner}</div>
+    </div>
+    <div class="form-row" style="margin-top:10px;">
+      <div><label class="form-label">재질</label>${m.material}</div>
+      <div><label class="form-label">캐비티 수</label>${m.cavity}개</div>
+    </div>
+    <div class="form-row" style="margin-top:10px;">
+      <div><label class="form-label">보관위치</label>${m.location||'-'}</div>
+      <div><label class="form-label">상태</label><span class="badge ${badgeClass(m.status)}">${m.status}</span></div>
+    </div>
+  </div>
+  <div class="form-card">
+    <div class="section-divider" style="margin-top:0;">수명 / PM 현황</div>
+    <div style="margin-bottom:12px;">
+      <label class="form-label">수명 사용율</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;height:14px;background:#e0e0e0;border-radius:7px;overflow:hidden;">
+          <div style="width:${Math.min(lr,100)}%;height:100%;background:${progColor(lr)};border-radius:7px;"></div>
+        </div>
+        <strong>${lr}%</strong>
+      </div>
+      <small>${fmtNum(m.current_shot)} / ${fmtNum(m.life_shot)} shot</small>
+    </div>
+    <div class="form-row">
+      <div><label class="form-label">수명 타수</label>${fmtNum(m.life_shot)}</div>
+      <div><label class="form-label">PM 주기</label>${fmtNum(m.pm_interval)}</div>
+    </div>
+    <div class="form-row" style="margin-top:10px;">
+      <div><label class="form-label">현재 타수</label><strong>${fmtNum(m.current_shot)}</strong></div>
+      <div><label class="form-label">다음PM 잔여</label><strong class="${alert?'txt-red':''}">${fmtNum(pr)}</strong></div>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-accent" onclick="openMaintForm(${m.id})">🔧 정비 등록</button>
+    </div>
+  </div>
+</div>
+<div class="section-divider">🔧 정비이력</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>정비일</th><th>유형</th><th>정비타수</th><th>담당자</th><th>비용</th><th>차기계획일</th><th>내용</th></tr></thead>
+    <tbody>
+    ${maints.length?maints.map(mn=>`<tr>
+      <td>${mn.maint_date}</td>
+      <td><span class="badge ${mn.maint_type==='예방정비'?'badge-prevent':mn.maint_type==='긴급수리'?'badge-urgent':'badge-routine'}">${mn.maint_type}</span></td>
+      <td>${fmtNum(mn.shot_at)}</td>
+      <td>${mn.worker}</td>
+      <td>${mn.cost?fmtNum(mn.cost)+'원':'-'}</td>
+      <td>${mn.next_plan||'-'}</td>
+      <td><small>${(mn.content||'').slice(0,30)}</small></td>
+    </tr>`).join(''):`<tr><td colspan="7" class="empty-msg">정비이력 없음</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function openMoldForm(editId){
+  const molds=getData('molds',INIT_MOLDS);
+  const m=editId?molds.find(x=>x.id===editId):null;
+  const html=`<form onsubmit="saveMold(event,${editId||'null'})">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">금형코드 *</label><input type="text" class="form-control" name="code" value="${m?m.code:''}" required></div>
+      <div class="form-group"><label class="form-label">금형명 *</label><input type="text" class="form-control" name="name" value="${m?m.name:''}" required></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">적용품번</label><input type="text" class="form-control" name="product_code" value="${m?m.product_code||'':''}"></div>
+      <div class="form-group"><label class="form-label">소유자</label><input type="text" class="form-control" name="owner" value="${m?m.owner:'현대자동차'}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">재질</label><input type="text" class="form-control" name="material" value="${m?m.material:'SKD11'}"></div>
+      <div class="form-group"><label class="form-label">캐비티수</label><input type="number" class="form-control" name="cavity" value="${m?m.cavity:1}" min="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">수명타수</label><input type="number" class="form-control" name="life_shot" value="${m?m.life_shot:500000}" min="1"></div>
+      <div class="form-group"><label class="form-label">PM 주기</label><input type="number" class="form-control" name="pm_interval" value="${m?m.pm_interval:50000}" min="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">현재 누적타수</label><input type="number" class="form-control" name="current_shot" value="${m?m.current_shot:0}" min="0"></div>
+      <div class="form-group"><label class="form-label">상태</label>
+      <select class="form-control" name="status">
+        ${['정상','점검중','수리중'].map(s=>`<option value="${s}" ${m&&m.status===s?'selected':''}>${s}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">보관위치</label><input type="text" class="form-control" name="location" value="${m?m.location||'':''}"></div>
+    </div>`;
+  showModal(editId?'🔩 금형 수정':'🔩 금형 등록',html,'saveMold');
+  document.querySelector('#modals form').onsubmit=function(e){saveMold(e,editId);};
+}
+function saveMold(e,editId){
+  e&&e.preventDefault();
+  const f=e?e.target:document.querySelector('#modals form');
+  if(!f)return;
+  const molds=getData('molds',INIT_MOLDS);
+  const obj={
+    id:editId||getNextId(molds),
+    code:f.code.value,name:f.name.value,
+    product_code:f.product_code.value,owner:f.owner.value,
+    material:f.material.value,cavity:parseInt(f.cavity.value),
+    life_shot:parseInt(f.life_shot.value),
+    pm_interval:parseInt(f.pm_interval.value),
+    current_shot:parseInt(f.current_shot.value)||0,
+    location:f.location.value,status:f.status.value,
+    reg_date:T
+  };
+  if(editId){const i=molds.findIndex(m=>m.id===editId);molds[i]=obj;}
+  else molds.push(obj);
+  setData('molds',molds);closeModal();showToast(editId?'수정되었습니다.':'금형이 등록되었습니다.');navigate('mold-list');
+}
+
+/* ============================================
+   PAGE: 정비이력
+   ============================================ */
+function renderMaintenanceList(){
+  const maints=getData('maints',INIT_MAINTS);
+  const sorted=maints.slice().sort((a,b)=>b.maint_date.localeCompare(a.maint_date));
+  const typeCount={'예방정비':0,'긴급수리':0,'정기점검':0};
+  maints.forEach(m=>{if(typeCount[m.maint_type]!==undefined) typeCount[m.maint_type]++;});
+  const totalCost=maints.reduce((s,m)=>s+(m.cost||0),0);
+  return `
+<div class="page-header">
+  <div><h2>🔧 정비이력 관리</h2><span class="sub-text">금형별 예방정비·긴급수리·정기점검 이력 통합 조회</span></div>
+  <button class="btn btn-accent" onclick="openMaintForm(null)">＋ 정비 등록</button>
+</div>
+<!-- KPI -->
+<div class="kpi-grid">
+  <div class="kpi-card kpi-blue"><div class="kpi-label">총 정비 건수</div><div class="kpi-value">${maints.length}</div><div class="kpi-unit">건</div></div>
+  <div class="kpi-card kpi-teal"><div class="kpi-label">예방정비</div><div class="kpi-value">${typeCount['예방정비']}</div><div class="kpi-unit">건</div></div>
+  <div class="kpi-card kpi-red"><div class="kpi-label">긴급수리</div><div class="kpi-value">${typeCount['긴급수리']}</div><div class="kpi-unit">건</div></div>
+  <div class="kpi-card kpi-orange"><div class="kpi-label">정기점검</div><div class="kpi-value">${typeCount['정기점검']}</div><div class="kpi-unit">건</div></div>
+</div>
+<div class="content-card">
+  <div class="card-header">정비이력 목록 <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px;">누적 정비비용: <strong style="color:var(--red);">${fmtNum(totalCost)}원</strong></span></div>
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>#</th><th>정비일</th><th>금형코드</th><th>금형명</th><th>정비유형</th><th>정비타수</th><th>정비내용</th><th>작업자</th><th>비용</th><th>차기계획일</th></tr></thead>
+    <tbody>
+    ${sorted.length?sorted.map((mn,i)=>{
+      const mold=getMoldById(mn.mold_id)||{};
+      const typeClass=mn.maint_type==='예방정비'?'badge-prevent':mn.maint_type==='긴급수리'?'badge-urgent':'badge-routine';
+      const overdue=mn.next_plan&&mn.next_plan<=T;
+      return `<tr ${mn.maint_type==='긴급수리'?'style="background:#fff5f5;"':''}>
+        <td data-label="#">${i+1}</td>
+        <td data-label="정비일">${mn.maint_date}</td>
+        <td data-label="금형코드"><strong>${mold.code||'-'}</strong></td>
+        <td data-label="금형명">${mold.name||'-'}</td>
+        <td data-label="유형"><span class="badge ${typeClass}">${mn.maint_type}</span></td>
+        <td data-label="정비타수">${fmtNum(mn.shot_at)}</td>
+        <td data-label="내용"><small style="max-width:160px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${mn.content||'-'}</small></td>
+        <td data-label="작업자">${mn.worker||'-'}</td>
+        <td data-label="비용" class="${(mn.cost||0)>=100000?'txt-red':''}">${mn.cost?fmtNum(mn.cost)+'원':'-'}</td>
+        <td data-label="차기계획" class="${overdue?'txt-red txt-bold':''}">${overdue?'⚠ ':''}${mn.next_plan||'-'}</td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="10" class="empty-msg">등록된 정비이력이 없습니다.</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function openMaintForm(moldId){
+  const molds=getData('molds',INIT_MOLDS);
+  const html=`<form onsubmit="saveMaint(event)">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">정비일 *</label><input type="date" class="form-control" name="maint_date" value="${T}" required></div>
+      <div class="form-group"><label class="form-label">정비유형 *</label>
+      <select class="form-control" name="maint_type" required>
+        ${['예방정비','정기점검','긴급수리'].map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="form-group"><label class="form-label">금형 *</label>
+    <select class="form-control" name="mold_id" required>
+      <option value="">-- 선택 --</option>
+      ${molds.map(m=>`<option value="${m.id}" ${moldId===m.id?'selected':''}>${m.code} - ${m.name}</option>`).join('')}
+    </select></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">정비시점 타수</label><input type="number" class="form-control" name="shot_at" min="0"></div>
+      <div class="form-group"><label class="form-label">담당자</label><input type="text" class="form-control" name="worker" value="정비팀"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">정비 비용(원)</label><input type="number" class="form-control" name="cost" value="0" min="0"></div>
+      <div class="form-group"><label class="form-label">차기 정비 예정일</label><input type="date" class="form-control" name="next_plan"></div>
+    </div>
+    <div class="form-group"><label class="form-label">정비 내용</label><textarea class="form-control" name="content" rows="3" placeholder="정비 상세 내용 입력"></textarea></div>`;
+  showModal('🔧 정비 등록',html,'saveMaint');
+}
+function saveMaint(e){
+  e&&e.preventDefault();
+  const f=e?e.target:document.querySelector('#modals form');
+  if(!f)return;
+  const maints=getData('maints',INIT_MAINTS);
+  const obj={
+    id:getNextId(maints),
+    mold_id:parseInt(f.mold_id.value),
+    maint_date:f.maint_date.value,
+    maint_type:f.maint_type.value,
+    shot_at:parseInt(f.shot_at.value)||0,
+    worker:f.worker.value,
+    cost:parseInt(f.cost.value)||0,
+    next_plan:f.next_plan.value||null,
+    content:f.content.value
+  };
+  // 금형 타수 업데이트
+  if(obj.shot_at>0){
+    const molds=getData('molds',INIT_MOLDS);
+    const mi=molds.findIndex(m=>m.id===obj.mold_id);
+    if(mi>=0){molds[mi].current_shot=obj.shot_at;setData('molds',molds);}
+  }
+  maints.unshift(obj);setData('maints',maints);closeModal();showToast('정비이력이 등록되었습니다.');navigate('maintenance-list');
+}
+
+/* ============================================
+   PAGE: 순회검사
+   ============================================ */
+function renderInspList(){
+  const insps=getData('insps',INIT_INSPS);
+  const sorted=insps.slice().sort((a,b)=>b.insp_date.localeCompare(a.insp_date));
+  const passed=insps.filter(i=>i.overall_result==='PASS').length;
+  const failed=insps.filter(i=>i.overall_result==='FAIL').length;
+  const passRate=insps.length?((passed/insps.length)*100).toFixed(1):0;
+  return `
+<div class="page-header">
+  <div><h2>🔍 순회검사 목록</h2></div>
+  <button class="btn btn-accent" onclick="openInspForm()">＋ 검사 등록</button>
+</div>
+<!-- KPI -->
+<div class="kpi-grid">
+  <div class="kpi-card kpi-blue"><div class="kpi-label">전체 검사</div><div class="kpi-value">${insps.length}</div><div class="kpi-unit">건</div></div>
+  <div class="kpi-card kpi-green"><div class="kpi-label">PASS</div><div class="kpi-value txt-green">${passed}</div><div class="kpi-unit">건</div></div>
+  <div class="kpi-card kpi-red"><div class="kpi-label">FAIL</div><div class="kpi-value txt-red">${failed}</div><div class="kpi-unit">건</div></div>
+  <div class="kpi-card ${parseFloat(passRate)>=95?'kpi-teal':parseFloat(passRate)>=85?'kpi-orange':'kpi-red'}">
+    <div class="kpi-label">합격률</div>
+    <div class="kpi-value ${parseFloat(passRate)>=95?'txt-green':parseFloat(passRate)>=85?'txt-orange':'txt-red'}">${passRate}</div>
+    <div class="kpi-unit">%</div>
+  </div>
+</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>검사번호</th><th>검사일</th><th>품목</th><th>금형</th><th>LOT</th><th>유형</th><th>검사자</th><th>결과</th><th>상세</th></tr></thead>
+    <tbody>
+    ${sorted.length?sorted.map(i=>{
+      const prod=getProductById(i.product_id)||{};
+      const mold=getMoldById(i.mold_id)||{};
+      const pass=i.items.filter(x=>x.result==='PASS').length;
+      const fail=i.items.filter(x=>x.result==='FAIL').length;
+      return `<tr>
+        <td data-label="검사번호"><small class="txt-blue">${i.insp_no}</small></td>
+        <td data-label="검사일">${i.insp_date}</td>
+        <td data-label="품목">${prod.name||'-'}</td>
+        <td data-label="금형">${mold.code||'-'}</td>
+        <td data-label="LOT"><small>${i.lot_no||'-'}</small></td>
+        <td data-label="유형">${i.insp_type}</td>
+        <td data-label="검사자">${i.inspector}</td>
+        <td data-label="결과">
+          <span class="badge ${badgeClass(i.overall_result)}">${i.overall_result}</span>
+          <small style="margin-left:4px;">P:${pass} F:${fail}</small>
+        </td>
+        <td data-label="상세"><button class="btn-xs btn-blue" onclick="window._detailId=${i.id};navigate('insp-detail')">상세</button></td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="9" class="empty-msg">검사 내역이 없습니다.</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function openInspForm(){
+  const products=getData('products',INIT_PRODUCTS);
+  const molds=getData('molds',INIT_MOLDS);
+  const dimItems=[
+    {name:'외경A',nominal:150.0,usl:150.5,lsl:149.5},
+    {name:'외경B',nominal:150.0,usl:150.5,lsl:149.5},
+    {name:'높이',nominal:82.5,usl:83.0,lsl:82.0}
+  ];
+  let itemsHtml=dimItems.map((it,idx)=>`
+    <tr>
+      <td>${it.name}</td>
+      <td>${it.nominal}</td>
+      <td>${it.usl}</td>
+      <td>${it.lsl}</td>
+      <td><input type="number" class="form-control" name="item_val_${idx}" step="0.001" style="width:90px;padding:4px 6px;min-height:32px;"></td>
+    </tr>`).join('');
+  const html=`<form onsubmit="saveInsp(event)">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">검사일 *</label><input type="date" class="form-control" name="insp_date" value="${T}" required></div>
+      <div class="form-group"><label class="form-label">검사시간</label><input type="time" class="form-control" name="insp_time" value="09:00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">품목 *</label>
+      <select class="form-control" name="product_id" required>
+        <option value="">-- 선택 --</option>
+        ${products.map(p=>`<option value="${p.id}">${p.code} - ${p.name}</option>`).join('')}
+      </select></div>
+      <div class="form-group"><label class="form-label">금형 *</label>
+      <select class="form-control" name="mold_id" required>
+        <option value="">-- 선택 --</option>
+        ${molds.map(m=>`<option value="${m.id}">${m.code}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">LOT 번호</label><input type="text" class="form-control" name="lot_no"></div>
+      <div class="form-group"><label class="form-label">검사유형</label>
+      <select class="form-control" name="insp_type">
+        ${['순회검사','최초검사','수시검사','최종검사'].map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">검사자</label><input type="text" class="form-control" name="inspector" value="품질팀"></div>
+      <div class="form-group"><label class="form-label">측정기</label><input type="text" class="form-control" name="gauge" value="마이크로미터"></div>
+    </div>
+    <div style="margin-top:12px;"><label class="form-label">측정 항목</label>
+    <div class="table-responsive"><table class="mini-table">
+      <thead><tr><th>항목명</th><th>기준(Nom)</th><th>USL</th><th>LSL</th><th>실측값</th></tr></thead>
+      <tbody>${itemsHtml}</tbody>
+    </table></div></div>`;
+  showModal('🔍 순회검사 등록',html,'saveInsp');
+  document.querySelector('#modals form').onsubmit=function(e){saveInsp(e,dimItems);};
+}
+function saveInsp(e,dimItems){
+  e&&e.preventDefault();
+  const f=e?e.target:document.querySelector('#modals form');
+  if(!f)return;
+  const insps=getData('insps',INIT_INSPS);
+  const items=(dimItems||[]).map((it,idx)=>{
+    const val=parseFloat(f['item_val_'+idx]?.value)||0;
+    const res=(val>=it.lsl&&val<=it.usl)?'PASS':'FAIL';
+    return {...it,value:val,result:res};
+  });
+  const hasVal=items.some(it=>it.value>0);
+  const overallResult=(!hasVal||items.every(it=>it.result==='PASS'))?'PASS':'FAIL';
+  const nextN=getNextId(insps);
+  const obj={
+    id:nextN,
+    insp_no:`INS-${String(nextN).padStart(6,'0')}`,
+    insp_date:f.insp_date.value,
+    insp_time:f.insp_time.value,
+    product_id:parseInt(f.product_id.value),
+    mold_id:parseInt(f.mold_id.value),
+    lot_no:f.lot_no.value,
+    insp_type:f.insp_type.value,
+    inspector:f.inspector.value,
+    gauge:f.gauge.value,
+    overall_result:overallResult,
+    items
+  };
+  insps.unshift(obj);setData('insps',insps);closeModal();showToast('순회검사가 등록되었습니다.');navigate('insp-list');
+}
+function renderInspDetail(id){
+  const insps=getData('insps',INIT_INSPS);
+  const insp=insps.find(x=>x.id===id)||insps[0];
+  if(!insp)return '<div class="empty-msg">검사를 찾을 수 없습니다.</div>';
+  const prod=getProductById(insp.product_id)||{};
+  const mold=getMoldById(insp.mold_id)||{};
+  return `
+<div class="page-header">
+  <h2>🔍 검사 상세 — ${insp.insp_no}</h2>
+  <button class="btn btn-outline" onclick="navigate('insp-list')">← 목록</button>
+</div>
+<div class="form-card" style="margin-bottom:14px;">
+  <div class="form-row">
+    <div><label class="form-label">검사일시</label>${insp.insp_date} ${insp.insp_time}</div>
+    <div><label class="form-label">종합결과</label><span class="badge ${badgeClass(insp.overall_result)}" style="font-size:14px;">${insp.overall_result}</span></div>
+  </div>
+  <div class="form-row" style="margin-top:10px;">
+    <div><label class="form-label">품목</label>${prod.name||'-'} (${prod.code||'-'})</div>
+    <div><label class="form-label">금형</label>${mold.code||'-'}</div>
+  </div>
+  <div class="form-row" style="margin-top:10px;">
+    <div><label class="form-label">LOT</label>${insp.lot_no||'-'}</div>
+    <div><label class="form-label">검사유형</label>${insp.insp_type}</div>
+  </div>
+  <div class="form-row" style="margin-top:10px;">
+    <div><label class="form-label">검사자</label>${insp.inspector}</div>
+    <div><label class="form-label">측정기</label>${insp.gauge}</div>
+  </div>
+</div>
+<div class="section-divider">측정 결과</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>항목명</th><th>기준(Nom)</th><th>USL</th><th>LSL</th><th>실측값</th><th>판정</th></tr></thead>
+    <tbody>
+    ${insp.items.map(it=>`<tr>
+      <td>${it.name}</td>
+      <td>${it.nominal}</td>
+      <td>${it.usl}</td>
+      <td>${it.lsl}</td>
+      <td class="${it.result==='FAIL'?'txt-red txt-bold':''}">${it.value}</td>
+      <td><span class="badge ${badgeClass(it.result)}">${it.result}</span></td>
+    </tr>`).join('')}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+
+/* ============================================
+   PAGE: 품질 트렌드
+   ============================================ */
+function renderQualityTrend(){
+  const defects=getData('defects',INIT_DEFECTS);
+  const results=getData('results',INIT_RESULTS);
+  const molds=getData('molds',INIT_MOLDS);
+
+  // 산점도: 금형별 수명율 vs 불량률
+  const scatterData=molds.map(m=>{
+    const lr=lifeRate(m);
+    const mDefects=defects.filter(d=>d.mold_id===m.id).reduce((s,d)=>s+d.defect_qty,0);
+    const mResults=results.filter(r=>{
+      const wo=getWoById(r.wo_id);if(!wo)return false;
+      const pl=getPlanById(wo.plan_id);return pl&&pl.mold_id===m.id;
+    }).reduce((s,r)=>s+r.total_qty,0);
+    const dr=mResults>0?parseFloat((mDefects/mResults*100).toFixed(2)):0;
+    return {x:lr,y:dr,label:m.code,pm_alert:pmAlert(m)};
+  });
+
+  // 30일 불량 추이
+  const trend30=[];
+  for(let i=29;i>=0;i--){
+    const d=fmt(TODAY,-i);
+    const cnt=defects.filter(df=>df.defect_date===d).reduce((s,df)=>s+df.defect_qty,0);
+    trend30.push({date:d.slice(5),count:cnt});
+  }
+
+  // 불량 유형별
+  const typeMap={};
+  defects.forEach(d=>{typeMap[d.defect_type]=(typeMap[d.defect_type]||0)+d.defect_qty;});
+  const typeSorted=Object.entries(typeMap).sort((a,b)=>b[1]-a[1]);
+
+  // 품목별 TOP5
+  const prdMap={};
+  defects.forEach(d=>{
+    const prod=getProductById(d.product_id)||{};
+    const k=prod.name||'기타';prdMap[k]=(prdMap[k]||0)+d.defect_qty;
+  });
+  const prdTop=Object.entries(prdMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // 금형별 TOP5
+  const moldMap={};
+  defects.forEach(d=>{
+    const mold=getMoldById(d.mold_id)||{};
+    const k=mold.code||'기타';moldMap[k]=(moldMap[k]||0)+d.defect_qty;
+  });
+  const moldTop=Object.entries(moldMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // LOT 이력
+  const lotHistory=results.slice().sort((a,b)=>b.result_date.localeCompare(a.result_date)).slice(0,20).map(r=>{
+    const wo=getWoById(r.wo_id)||{};
+    const pl=getPlanById(wo.plan_id)||{};
+    const mold=getMoldById(pl.mold_id)||{};
+    const dr=r.total_qty>0?parseFloat((r.defect_qty/r.total_qty*100).toFixed(2)):0;
+    return {lot_no:wo.wo_no||'-',date:r.result_date,mold:mold.code||'-',total:r.total_qty,defect:r.defect_qty,defect_rate:dr};
+  });
+
+  return `
+<div class="page-header">
+  <h2>📈 품질 트렌드 분석</h2>
+  <span class="sub-text">금형 수명 상태 × 불량률 상관 분석 · LOT별 품질이력 추적</span>
+</div>
+
+<!-- 핵심 분석: 산점도 -->
+<div class="dash-card" style="margin-bottom:16px;">
+  <div class="card-header" style="background:var(--primary);color:#fff;">
+    🔑 핵심 분석 — 금형 수명율 × 불량률 상관관계
+    <span style="font-size:11px;font-weight:400;opacity:.8;margin-left:6px;">금형 수명이 높을수록 불량률 증가 여부</span>
+  </div>
+  <div class="card-body" style="height:260px;"><canvas id="scatterChart"></canvas></div>
+</div>
+
+<div class="dash-grid2" style="margin-bottom:16px;">
+  <div class="dash-card">
+    <div class="card-header">📅 최근 30일 불량 발생 추이</div>
+    <div class="card-body" style="height:200px;"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div class="dash-card">
+    <div class="card-header">⚠ 불량 유형별 분포</div>
+    <div class="card-body" style="height:200px;">${typeSorted.length?'<canvas id="typeChart"></canvas>':'<div class="empty-msg">데이터 없음</div>'}</div>
+  </div>
+</div>
+
+<div class="dash-grid2" style="margin-bottom:16px;">
+  <div class="dash-card">
+    <div class="card-header">📦 품목별 불량 TOP 5</div>
+    <div class="card-body" style="height:180px;">${prdTop.length?'<canvas id="prdChart"></canvas>':'<div class="empty-msg">데이터 없음</div>'}</div>
+  </div>
+  <div class="dash-card">
+    <div class="card-header">🔩 금형별 불량 TOP 5</div>
+    <div class="card-body" style="height:180px;">${moldTop.length?'<canvas id="moldChart"></canvas>':'<div class="empty-msg">데이터 없음</div>'}</div>
+  </div>
+</div>
+
+<div class="section-divider">📋 LOT별 품질이력 (최근 20 LOT · 금형 연계)</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>LOT번호</th><th>생산일</th><th>사용금형</th><th>총생산</th><th>불량</th><th>불량률</th><th>판정</th></tr></thead>
+    <tbody>
+    ${lotHistory.length?lotHistory.map(lot=>`<tr>
+      <td><small class="txt-blue">${lot.lot_no}</small></td>
+      <td>${lot.date}</td>
+      <td><strong>${lot.mold}</strong></td>
+      <td>${fmtNum(lot.total)}</td>
+      <td class="${lot.defect>0?'txt-red':''}">${lot.defect}</td>
+      <td class="${lot.defect_rate>1?'txt-red txt-bold':'txt-green'}">${lot.defect_rate}%</td>
+      <td><span class="badge ${lot.defect_rate<=0.5?'badge-pass':lot.defect_rate<=1.0?'badge-plan':'badge-fail'}">${lot.defect_rate<=0.5?'우수':lot.defect_rate<=1.0?'양호':'관리'}</span></td>
+    </tr>`).join(''):`<tr><td colspan="7" class="empty-msg">생산실적 데이터가 없습니다.</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<script>
+window._scatter=${JSON.stringify(scatterData)};
+window._trend30=${JSON.stringify(trend30)};
+window._typeSorted=${JSON.stringify(typeSorted)};
+window._prdTop=${JSON.stringify(prdTop)};
+window._moldTop=${JSON.stringify(moldTop)};
+<\/script>`;
+}
+function initQualityCharts(){
+  const COLORS=['#e74c3c','#e67e22','#f1c40f','#27ae60','#3498db','#9b59b6','#1abc9c','#e91e63'];
+  const scatter=window._scatter||[];
+  const trend=window._trend30||[];
+  const typeSorted=window._typeSorted||[];
+  const prdTop=window._prdTop||[];
+  const moldTop=window._moldTop||[];
+
+  // 산점도
+  const sc=document.getElementById('scatterChart');
+  if(sc){
+    chartInstances.scatter=new Chart(sc.getContext('2d'),{
+      type:'scatter',
+      data:{datasets:[{
+        label:'금형',
+        data:scatter.map(d=>({x:d.x,y:d.y})),
+        backgroundColor:scatter.map(d=>d.pm_alert?'rgba(231,76,60,0.85)':'rgba(52,152,219,0.75)'),
+        pointRadius:10,pointHoverRadius:13
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>{
+          const d=scatter[ctx.dataIndex];
+          return `${d.label} | 수명율: ${d.x}% | 불량률: ${d.y}%`;
+        }}}},
+        scales:{
+          x:{title:{display:true,text:'금형 수명 사용률 (%)'},min:0,max:100},
+          y:{title:{display:true,text:'불량률 (%)'},min:0}
+        }
+      },
+      plugins:[{afterDraw:(chart)=>{
+        const ctx2=chart.ctx;
+        chart.data.datasets[0].data.forEach((pt,i)=>{
+          const meta=chart.getDatasetMeta(0).data[i];
+          ctx2.fillStyle='#1a3a5c';ctx2.font='bold 10px sans-serif';
+          ctx2.fillText(scatter[i].label,meta.x+6,meta.y-6);
+        });
+      }}]
+    });
+  }
+  // 30일 추이
+  const tc=document.getElementById('trendChart');
+  if(tc){
+    chartInstances.trend=new Chart(tc.getContext('2d'),{
+      type:'line',
+      data:{labels:trend.map(d=>d.date),datasets:[{label:'불량',data:trend.map(d=>d.count),
+        borderColor:'#e74c3c',backgroundColor:'rgba(231,76,60,0.1)',fill:true,tension:0.35,pointRadius:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        scales:{y:{beginAtZero:true}},plugins:{legend:{display:false}}}
+    });
+  }
+  // 유형별
+  const tyc=document.getElementById('typeChart');
+  if(tyc&&typeSorted.length){
+    chartInstances.type=new Chart(tyc.getContext('2d'),{
+      type:'doughnut',
+      data:{labels:typeSorted.map(d=>d[0]),datasets:[{data:typeSorted.map(d=>d[1]),backgroundColor:COLORS}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{font:{size:11}}}}}
+    });
+  }
+  // 품목
+  const pc=document.getElementById('prdChart');
+  if(pc&&prdTop.length){
+    chartInstances.prd=new Chart(pc.getContext('2d'),{
+      type:'bar',
+      data:{labels:prdTop.map(d=>d[0]),datasets:[{label:'불량수',data:prdTop.map(d=>d[1]),backgroundColor:'rgba(52,152,219,0.75)',borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+    });
+  }
+  // 금형
+  const mc=document.getElementById('moldChart');
+  if(mc&&moldTop.length){
+    chartInstances.mold=new Chart(mc.getContext('2d'),{
+      type:'bar',
+      data:{labels:moldTop.map(d=>d[0]),datasets:[{label:'불량수',data:moldTop.map(d=>d[1]),backgroundColor:'rgba(231,76,60,0.75)',borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+    });
+  }
+}
+
+/* ============================================
+   PAGE: 품목 관리
+   ============================================ */
+function renderProductList(){
+  const products=getData('products',INIT_PRODUCTS);
+  return `
+<div class="page-header">
+  <div><h2>📦 품목 (치수기준)</h2></div>
+  <button class="btn btn-accent" onclick="openProductForm()">＋ 품목 등록</button>
+</div>
+<div class="content-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead><tr><th>품번</th><th>품명</th><th>납품처</th><th>사이클시간</th><th>기준치수</th><th>USL</th><th>LSL</th><th>관리</th></tr></thead>
+    <tbody>
+    ${products.length?products.map(p=>`<tr>
+      <td data-label="품번"><strong>${p.code}</strong></td>
+      <td data-label="품명">${p.name}</td>
+      <td data-label="납품처">${p.customer}</td>
+      <td data-label="사이클">${p.cycle}s</td>
+      <td data-label="기준">${p.nominal}</td>
+      <td data-label="USL">${p.usl}</td>
+      <td data-label="LSL">${p.lsl}</td>
+      <td data-label="관리">
+        <div class="btn-group">
+          <button class="btn-xs btn-blue" onclick="openProductForm(${p.id})">수정</button>
+          <button class="btn-xs btn-red" onclick="deleteProduct(${p.id})">삭제</button>
+        </div>
+      </td>
+    </tr>`).join(''):`<tr><td colspan="8" class="empty-msg">등록된 품목이 없습니다.</td></tr>`}
+    </tbody>
+  </table>
+  </div>
+</div>`;
+}
+function openProductForm(editId){
+  const products=getData('products',INIT_PRODUCTS);
+  const p=editId?products.find(x=>x.id===editId):null;
+  const html=`<form onsubmit="saveProduct(event,${editId||'null'})">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">품번 *</label><input type="text" class="form-control" name="code" value="${p?p.code:''}" required></div>
+      <div class="form-group"><label class="form-label">품명 *</label><input type="text" class="form-control" name="name" value="${p?p.name:''}" required></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">납품처</label><input type="text" class="form-control" name="customer" value="${p?p.customer:'현대자동차'}"></div>
+      <div class="form-group"><label class="form-label">단위</label><input type="text" class="form-control" name="unit" value="${p?p.unit:'EA'}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">표준 사이클시간(s)</label><input type="number" class="form-control" name="cycle" value="${p?p.cycle:30}" step="1"></div>
+      <div class="form-group"><label class="form-label">기준치수(Nom)</label><input type="number" class="form-control" name="nominal" value="${p?p.nominal:100}" step="0.001"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">USL (상한)</label><input type="number" class="form-control" name="usl" value="${p?p.usl:100.5}" step="0.001"></div>
+      <div class="form-group"><label class="form-label">LSL (하한)</label><input type="number" class="form-control" name="lsl" value="${p?p.lsl:99.5}" step="0.001"></div>
+    </div>`;
+  showModal(editId?'📦 품목 수정':'📦 품목 등록',html,'saveProduct');
+  document.querySelector('#modals form').onsubmit=function(e){saveProduct(e,editId);};
+}
+function saveProduct(e,editId){
+  e&&e.preventDefault();
+  const f=e?e.target:document.querySelector('#modals form');
+  if(!f)return;
+  const products=getData('products',INIT_PRODUCTS);
+  const obj={
+    id:editId||getNextId(products),
+    code:f.code.value,name:f.name.value,
+    customer:f.customer.value,unit:f.unit.value,
+    cycle:parseFloat(f.cycle.value)||30,
+    nominal:parseFloat(f.nominal.value)||100,
+    usl:parseFloat(f.usl.value)||100.5,
+    lsl:parseFloat(f.lsl.value)||99.5
+  };
+  if(editId){const i=products.findIndex(p=>p.id===editId);products[i]=obj;}
+  else products.push(obj);
+  setData('products',products);closeModal();showToast(editId?'수정되었습니다.':'품목이 등록되었습니다.');navigate('product-list');
+}
+function deleteProduct(id){
+  if(!confirm('품목을 삭제하시겠습니까?'))return;
+  const products=getData('products',INIT_PRODUCTS).filter(p=>p.id!==id);
+  setData('products',products);showToast('삭제되었습니다.');navigate('product-list');
+}
+
+/* ============================================
+   MODAL HELPER
+   ============================================ */
+function showModal(title,bodyHtml,submitFn){
+  const container=document.getElementById('modals');
+  container.innerHTML=`
+  <div class="modal-overlay active" id="modalOverlay" onclick="handleModalClick(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>${title}</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">${bodyHtml}</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">취소</button>
+        <button type="button" class="btn btn-primary" onclick="submitModal()">저장</button>
+      </div>
+    </div>
+  </div>`;
+  window._modalSubmitFn=submitFn;
+}
+function handleModalClick(e){if(e.target===e.currentTarget)closeModal();}
+function closeModal(){
+  const c=document.getElementById('modals');
+  if(c)c.innerHTML='';
+  window._modalSubmitFn=null;
+}
+function submitModal(){
+  const f=document.querySelector('#modals form');
+  if(f){
+    const evt=new Event('submit',{bubbles:true,cancelable:true});
+    f.dispatchEvent(evt);
+  }
+}
+
+/* ============================================
+   INIT
+   ============================================ */
+document.addEventListener('DOMContentLoaded',()=>{
+  initData();
+  const today=new Date();
+  document.getElementById('todayLabel').textContent=today.toLocaleDateString('ko-KR');
+  navigate('dashboard');
+  // PWA service worker
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+});
+</script>
+</body>
+</html>
