@@ -1233,6 +1233,8 @@ function renderWoDetail(id){
 function renderResultList(){
   const results=getData('results',INIT_RESULTS);
   const sorted=results.slice().sort((a,b)=>b.result_date.localeCompare(a.result_date));
+  // Google Sheets 우선 읽기: DOM 렌더 완료 후 tbody 교체
+  setTimeout(()=>loadResultsFromSheet(),0);
   return `
 <div class="page-header">
   <div><h2>📊 생산실적 · LOT</h2></div>
@@ -1242,7 +1244,7 @@ function renderResultList(){
   <div class="table-responsive">
   <table class="data-table">
     <thead><tr><th>실적일</th><th>작업지시</th><th>품목</th><th>총생산</th><th>양품</th><th>불량</th><th>불량률</th><th>타수</th><th>작업자</th></tr></thead>
-    <tbody>
+    <tbody id="resultTbody">
     ${sorted.length?sorted.map(r=>{
       const wo=getWoById(r.wo_id)||{};
       const pl=getPlanById(wo.plan_id)||{};
@@ -1265,6 +1267,55 @@ function renderResultList(){
   </div>
 </div>`;
 }
+/* ── Google Sheets 생산실적 읽기 (API 우선, localStorage fallback) ── */
+const GAS_BASE_URL='https://script.google.com/macros/s/AKfycbw5IZ7wXy0ssynQegy_MMdeCMMUou2x57hoHzix8A60xfvR_WfkJPmyr3i7IuDmi_Fo/exec';
+
+function buildResultRows(rows){
+  if(!rows||!rows.length) return '<tr><td colspan="9" class="empty-msg">생산실적 없음</td></tr>';
+  return rows.map(r=>{
+    const resultDate = String(r['실적일']||'').slice(0,10);
+    const woNo       = r['작업지시']||'-';
+    const prodName   = r['품목']||'-';
+    const goodQty    = Number(r['양품수량'])||0;
+    const badQty     = Number(r['불량수량'])||0;
+    const totalQty   = goodQty + badQty;
+    const shotCount  = Number(r['금형타수'])||0;
+    const worker     = r['작업자']||'-';
+    const dr         = totalQty>0?(badQty/totalQty*100).toFixed(2):0;
+    return `<tr>
+      <td data-label="실적일">${resultDate}</td>
+      <td data-label="작업지시"><small>${woNo}</small></td>
+      <td data-label="품목">${prodName}</td>
+      <td data-label="쳙생산">${fmtNum(totalQty)}</td>
+      <td data-label="양품" class="txt-green">${fmtNum(goodQty)}</td>
+      <td data-label="불량" class="txt-red">${fmtNum(badQty)}</td>
+      <td data-label="불량률" class="${parseFloat(dr)>1?'txt-red':'txt-green'}">${dr}%</td>
+      <td data-label="타수">${fmtNum(shotCount)}</td>
+      <td data-label="작업자">${worker}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadResultsFromSheet(){
+  try{
+    const res    = await fetch(GAS_BASE_URL+'?action=getProductionResults');
+    const json   = await res.json();
+    const wrapper = json._oma_data || json;  // 래퍼 자동 감지
+    console.log('[생산실적] Google Sheets API 응답:', wrapper);
+    if(wrapper.success && Array.isArray(wrapper.data) && wrapper.data.length>0){
+      const sorted = wrapper.data.slice().sort((a,b)=>
+        String(b['실적일']||'').localeCompare(String(a['실적일']||''))
+      );
+      const tbody = document.getElementById('resultTbody');
+      if(tbody) tbody.innerHTML = buildResultRows(sorted);
+    } else {
+      console.log('[생산실적] Google Sheets 데이터 없음 → localStorage 유지');
+    }
+  } catch(err){
+    console.warn('[생산실적] API 호출 실패 → localStorage fallback 유지', err);
+  }
+}
+
 function openResultForm(){
   const wos=getData('wos',INIT_WOS).filter(w=>w.status==='진행'||w.status==='완료');
   let html=`<form onsubmit="saveResult(event)">
@@ -1321,7 +1372,7 @@ function saveResult(e){
   results.unshift(obj);setData('results',results);
 
   // ── Google Sheets 전송 ──
-  const GAS_URL='https://script.google.com/macros/s/AKfycbw5IZ7wXy0ssynQegy_MMdeCMMUou2x57hoHzix8A60xfvR_WfkJPmyr3i7IuDmi_Fo/exec';
+  // GAS_BASE_URL 전역 상수 사용
   const payload=JSON.stringify({
     action:'saveProductionResult',
     resultDate:f.result_date.value,
@@ -1339,7 +1390,7 @@ function saveResult(e){
   closeModal();
   showToast('저장 중...');
 
-  fetch(GAS_URL,{
+  fetch(GAS_BASE_URL,{
     method:'POST',
     body:payload
   })
