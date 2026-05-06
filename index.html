@@ -1300,6 +1300,13 @@ function buildResultRows(rows){
 // window에 직접 등록하여 JSONP 응답 시 전역에서 호출 가능하도록 함
 window.handleProductionResults = function handleProductionResults(response){
   console.log('[생산실적] Google Sheets JSONP 응답:', response);
+  console.log('[생산실적] 응답 키 목록:', Object.keys(response||{}));
+  console.log('[생산실적] response.success:', response&&response.success);
+  console.log('[생산실적] response.data 타입:', response&&typeof response.data, '/ Array?', Array.isArray(response&&response.data));
+  if(Array.isArray(response&&response.data)&&response.data.length>0){
+    console.log('[생산실적] data[0] 샘플:', response.data[0]);
+    console.log('[생산실적] data[0] 키 목록:', Object.keys(response.data[0]));
+  }
   // 타임아웃 타이머 해제
   if(window._gasJsonpTimer){
     clearTimeout(window._gasJsonpTimer);
@@ -1309,13 +1316,26 @@ window.handleProductionResults = function handleProductionResults(response){
   const el = document.getElementById('_gasJsonpScript');
   if(el) el.remove();
   try{
-    if(response && response.success && Array.isArray(response.data) && response.data.length>0){
-      const sorted = response.data.slice().sort((a,b)=>
+    // success 키가 없거나 다른 이름일 경우를 방어: data 배열이 있으면 무조건 렌더
+    const rows = Array.isArray(response&&response.data) ? response.data
+                : Array.isArray(response&&response.rows) ? response.rows
+                : Array.isArray(response)                ? response
+                : null;
+    console.log('[생산실적] 렌더 대상 rows 길이:', rows?rows.length:'null');
+    if(rows && rows.length > 0){
+      const sorted = rows.slice().sort((a,b)=>
         String(b['실적일']||'').localeCompare(String(a['실적일']||''))
       );
-      document.getElementById('resultTbody').innerHTML = buildResultRows(sorted);
+      const tbody = document.getElementById('resultTbody');
+      console.log('[생산실적] resultTbody 탐색 결과:', tbody);
+      if(tbody){
+        tbody.innerHTML = buildResultRows(sorted);
+        console.log('[생산실적] ✅ tbody 렌더 완료, 행 수:', sorted.length);
+      } else {
+        console.warn('[생산실적] resultTbody를 찾지 못함 → currentPage:', window.currentPage||'알수없음');
+      }
     } else {
-      console.log('[생산실적] Google Sheets 데이터 없음 → localStorage 유지');
+      console.log('[생산실적] Google Sheets 데이터 없음(rows 비어있음) → localStorage 유지');
     }
   } catch(err){
     console.warn('[생산실적] JSONP 콜백 처리 실패 → localStorage fallback 유지', err);
