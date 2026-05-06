@@ -1296,24 +1296,58 @@ function buildResultRows(rows){
   }).join('');
 }
 
-async function loadResultsFromSheet(){
+// ── JSONP 콜백: Apps Script doGet의 callback 파라미터로 호출됨 ──
+// window에 직접 등록하여 JSONP 응답 시 전역에서 호출 가능하도록 함
+window.handleProductionResults = function handleProductionResults(response){
+  console.log('[생산실적] Google Sheets JSONP 응답:', response);
+  // 타임아웃 타이머 해제
+  if(window._gasJsonpTimer){
+    clearTimeout(window._gasJsonpTimer);
+    window._gasJsonpTimer = null;
+  }
+  // 사용한 script 태그 제거
+  const el = document.getElementById('_gasJsonpScript');
+  if(el) el.remove();
   try{
-    const res    = await fetch(GAS_BASE_URL+'?action=getProductionResults');
-    const json   = await res.json();
-    const wrapper = json._oma_data || json;  // 래퍼 자동 감지
-    console.log('[생산실적] Google Sheets API 응답:', wrapper);
-    if(wrapper.success && Array.isArray(wrapper.data) && wrapper.data.length>0){
-      const sorted = wrapper.data.slice().sort((a,b)=>
+    if(response && response.success && Array.isArray(response.data) && response.data.length>0){
+      const sorted = response.data.slice().sort((a,b)=>
         String(b['실적일']||'').localeCompare(String(a['실적일']||''))
       );
-      const tbody = document.getElementById('resultTbody');
-      if(tbody) tbody.innerHTML = buildResultRows(sorted);
+      document.getElementById('resultTbody').innerHTML = buildResultRows(sorted);
     } else {
       console.log('[생산실적] Google Sheets 데이터 없음 → localStorage 유지');
     }
   } catch(err){
-    console.warn('[생산실적] API 호출 실패 → localStorage fallback 유지', err);
+    console.warn('[생산실적] JSONP 콜백 처리 실패 → localStorage fallback 유지', err);
   }
+};
+
+function loadResultsFromSheet(){
+  // 기존 script 태그 중복 방지
+  const old = document.getElementById('_gasJsonpScript');
+  if(old) old.remove();
+  if(window._gasJsonpTimer){
+    clearTimeout(window._gasJsonpTimer);
+    window._gasJsonpTimer = null;
+  }
+
+  // 5초 타임아웃: JSONP 응답이 없으면 localStorage 유지
+  window._gasJsonpTimer = setTimeout(()=>{
+    const el = document.getElementById('_gasJsonpScript');
+    if(el) el.remove();
+    window._gasJsonpTimer = null;
+    console.warn('[생산실적] JSONP 타임아웃 → localStorage fallback 유지');
+  }, 5000);
+
+  const script = document.createElement('script');
+  script.id  = '_gasJsonpScript';
+  script.src = GAS_BASE_URL+'?action=getProductionResults&callback=handleProductionResults';
+  script.onerror = ()=>{
+    if(window._gasJsonpTimer){ clearTimeout(window._gasJsonpTimer); window._gasJsonpTimer=null; }
+    script.remove();
+    console.warn('[생산실적] JSONP script 로드 실패 → localStorage fallback 유지');
+  };
+  document.head.appendChild(script);
 }
 
 function openResultForm(){
