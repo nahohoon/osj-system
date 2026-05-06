@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#1a3a5c">
 <meta name="description" content="오성정공 금형기반 스마트 생산품질 관리시스템 데모">
 <title>오성정공 생산품질 관리시스템</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="manifest" href="https://nahohoon.github.io/osj-system/manifest.json">
+<link rel="apple-touch-icon" href="https://nahohoon.github.io/osj-system/icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ============================================
@@ -1284,6 +1284,17 @@ function openResultForm(){
       <div class="form-group"><label class="form-label">금형 타수</label><input type="number" class="form-control" name="shot_count" min="0"></div>
       <div class="form-group"><label class="form-label">작업자 *</label><input type="text" class="form-control" name="worker" required></div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">카운팅방식</label>
+        <select class="form-control" name="count_type">
+          <option value="">-- 선택 --</option>
+          <option value="개수">개수</option>
+          <option value="타수">타수</option>
+          <option value="중량">중량</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">환산기준</label><input type="text" class="form-control" name="convert_rule" placeholder="예) 1타=2EA"></div>
+    </div>
     <div class="form-group"><label class="form-label">비고</label><input type="text" class="form-control" name="remark"></div>`;
   showModal('📊 생산실적 입력',html,'saveResult');
 }
@@ -1294,15 +1305,55 @@ function saveResult(e){
   const results=getData('results',INIT_RESULTS);
   const good=parseInt(f.good_qty.value)||0;
   const defect=parseInt(f.defect_qty.value)||0;
+  const woId=parseInt(f.wo_id.value);
+  const wo=getWoById(woId)||{};
+  const pl=getPlanById(wo.plan_id)||{};
+  const prod=getProductById(pl.product_id)||{};
   const obj={
     id:getNextId(results),
-    wo_id:parseInt(f.wo_id.value),
+    wo_id:woId,
     result_date:f.result_date.value,
     good_qty:good,defect_qty:defect,total_qty:good+defect,
     shot_count:parseInt(f.shot_count.value)||0,
     worker:f.worker.value,remark:f.remark?f.remark.value:''
   };
-  results.unshift(obj);setData('results',results);closeModal();showToast('생산실적이 등록되었습니다.');navigate('result-list');
+  // ── 로컬 즉시 반영 ──
+  results.unshift(obj);setData('results',results);
+
+  // ── Google Sheets 전송 ──
+  const GAS_URL='https://script.google.com/macros/s/AKfycbw5IZ7wXy0ssynQegy_MMdeCMMUou2x57hoHzix8A60xfvR_WfkJPmyr3i7IuDmi_Fo/exec';
+  const payload=JSON.stringify({
+    action:'saveProductionResult',
+    resultDate:f.result_date.value,
+    workOrder:wo.wo_no||'',
+    product:prod.name||'',
+    goodQty:good,
+    badQty:defect,
+    shotCount:parseInt(f.shot_count.value)||0,
+    worker:f.worker.value,
+    countType:f.count_type?f.count_type.value:'',
+    convertRule:f.convert_rule?f.convert_rule.value:'',
+    memo:f.remark?f.remark.value:''
+  });
+
+  closeModal();
+  showToast('저장 중...');
+
+  fetch(GAS_URL,{
+    method:'POST',
+    body:payload
+  })
+  .then(res=>res.text())
+  .then(text=>{
+    console.log('GAS 응답:', text);
+    showToast('✅ Google Sheets 저장 완료');
+    navigate('result-list');
+  })
+  .catch(err=>{
+    console.error('GAS 전송 오류:', err);
+    showToast('⚠️ 오류: Google Sheets 저장 실패 (로컬만 저장됨)');
+    navigate('result-list');
+  });
 }
 
 /* ============================================
