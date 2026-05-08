@@ -2781,9 +2781,15 @@ document.addEventListener('DOMContentLoaded',()=>{
   const btn=document.getElementById('osjLoginBtn');
   const idEl=document.getElementById('osjLoginId');
   const pwEl=document.getElementById('osjLoginPw');
+  const params=new URLSearchParams(window.location.search||'');
   if(btn)btn.addEventListener('click',osjDoLogin);
   if(idEl)idEl.addEventListener('keydown',function(e){if(e.key==='Enter'){if(pwEl)pwEl.focus();}});
   if(pwEl)pwEl.addEventListener('keydown',function(e){if(e.key==='Enter')osjDoLogin();});
+  if(params.get('resetLogin')==='1'){
+    osjClearSession();
+    osjShowLogin();
+    return;
+  }
   if(osjHasSession()){
     osjShowApp();
     osjInitApp();
