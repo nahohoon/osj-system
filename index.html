@@ -526,6 +526,7 @@ strong{font-weight:700;}
 }
 .osj-login-btn:hover{background:#2d5a8e;}
 .osj-login-err{display:none;margin-top:10px;font-size:12px;color:#dc2626;font-weight:700;}
+#osjAppWrap{display:none;}
 .osj-logout-btn,
 .osj-logout-btn:link,
 .osj-logout-btn:visited{
@@ -564,7 +565,7 @@ strong{font-weight:700;}
   </div>
 </div>
 
-<div id="osjAppWrap">
+<div id="osjAppWrap" style="display:none;">
 
 <!-- ▶ Toast -->
 <div id="toast"></div>
@@ -587,16 +588,7 @@ strong{font-weight:700;}
       🔔 PM 알림 <strong id="pmAlertCount">0</strong>건
     </a>
     <span class="today-label">📅 <span id="todayLabel"></span></span>
-    <button
-      class="btn btn-sm"
-      onclick="osjDoLogout()"
-      style="background:#ffffff;color:#173b67;font-weight:700;border-radius:6px;padding:6px 12px;border:none;"
-    >
-    로그아웃
-    </button>
-      onclick="osjDoLogout()"
-      style="color:#fff !important;border:1px solid #fff !important;background:rgba(255,255,255,.18) !important;font-weight:700 !important;opacity:1 !important;"
-    >로그아웃</button>
+    <button class="btn btn-outline btn-sm osj-logout-btn" type="button" onclick="osjDoLogout()">로그아웃</button>
   </div>
 </header>
 
