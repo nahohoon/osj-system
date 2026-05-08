@@ -2799,6 +2799,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(pwEl)pwEl.addEventListener('keydown',function(e){if(e.key==='Enter')osjDoLogin();});
   if(params.get('resetLogin')==='1'){
     osjClearSession();
+    params.delete('resetLogin');
+    try{
+      const nextQuery=params.toString();
+      const nextUrl=window.location.pathname+(nextQuery?('?'+nextQuery):'')+window.location.hash;
+      window.history.replaceState(null,'',nextUrl);
+    }catch(e){}
     osjShowLogin();
     return;
   }
