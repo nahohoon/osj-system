@@ -494,9 +494,57 @@ strong{font-weight:700;}
 .font-mono{font-family:monospace;}
 .mt-2{margin-top:8px;}
 .hidden{display:none!important;}
+
+/* ============================================
+   Login Layer (minimal)
+   ============================================ */
+.osj-login-screen{
+  position:fixed;inset:0;z-index:2000;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#1a3a5c,#2d5a8e);
+  padding:16px;
+}
+.osj-login-card{
+  width:100%;max-width:360px;background:#fff;border-radius:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.25);padding:22px 18px;
+}
+.osj-login-title{font-size:20px;font-weight:800;color:#1a3a5c;}
+.osj-login-sub{font-size:12px;color:#64748b;margin-top:4px;}
+.osj-login-field{margin-top:12px;}
+.osj-login-field label{display:block;font-size:12px;color:#475569;font-weight:700;margin-bottom:5px;}
+.osj-login-field input{
+  width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;
+  font-size:14px;outline:none;
+}
+.osj-login-field input:focus{border-color:#1a3a5c;box-shadow:0 0 0 3px rgba(26,58,92,.15);}
+.osj-login-btn{
+  width:100%;margin-top:14px;background:#1a3a5c;color:#fff;border:none;
+  border-radius:8px;padding:11px 12px;font-size:14px;font-weight:700;
+}
+.osj-login-btn:hover{background:#2d5a8e;}
+.osj-login-err{display:none;margin-top:10px;font-size:12px;color:#dc2626;font-weight:700;}
 </style>
 </head>
 <body>
+
+<div id="osjLoginScreen" class="osj-login-screen">
+  <div class="osj-login-card">
+    <div class="osj-login-title">오성정공 생산관리</div>
+    <div class="osj-login-sub">로그인 후 시스템을 이용할 수 있습니다.</div>
+    <div class="osj-login-field">
+      <label for="osjLoginId">아이디</label>
+      <input id="osjLoginId" type="text" autocomplete="username" placeholder="admin">
+    </div>
+    <div class="osj-login-field">
+      <label for="osjLoginPw">비밀번호</label>
+      <input id="osjLoginPw" type="password" autocomplete="current-password" placeholder="osj1234">
+    </div>
+    <button class="osj-login-btn" id="osjLoginBtn" type="button">로그인</button>
+    <div class="osj-login-err" id="osjLoginErr">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+  </div>
+</div>
+
+<div id="osjAppWrap" style="display:none;">
 
 <!-- ▶ Toast -->
 <div id="toast"></div>
@@ -619,6 +667,7 @@ strong{font-weight:700;}
 
 <!-- ▶ Modals Container -->
 <div id="modals"></div>
+</div>
 
 <script>
 /* ============================================
@@ -702,9 +751,66 @@ function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch{
 function getData(key,def){return load('osj_'+key,def);}
 function setData(key,val){save('osj_'+key,val);}
 function getNextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
+const OSJ_SYSTEM_SESSION_KEY='osj_system_session_v1';
+const OSJ_SYSTEM_LOGIN_ID='admin';
+const OSJ_SYSTEM_LOGIN_PW='osj1234';
+let _osjAppStarted=false;
+function osjSaveSession(){
+  try{localStorage.setItem(OSJ_SYSTEM_SESSION_KEY,JSON.stringify({id:OSJ_SYSTEM_LOGIN_ID,ts:Date.now()}));}catch(e){}
+}
+function osjHasSession(){
+  try{
+    const raw=localStorage.getItem(OSJ_SYSTEM_SESSION_KEY);
+    if(!raw)return false;
+    const s=JSON.parse(raw);
+    return !!(s&&s.id===OSJ_SYSTEM_LOGIN_ID);
+  }catch(e){return false;}
+}
+function osjClearSession(){try{localStorage.removeItem(OSJ_SYSTEM_SESSION_KEY);}catch(e){}}
+function osjShowLogin(){
+  const login=document.getElementById('osjLoginScreen');
+  const app=document.getElementById('osjAppWrap');
+  if(login)login.style.display='flex';
+  if(app)app.style.display='none';
+}
+function osjShowApp(){
+  const login=document.getElementById('osjLoginScreen');
+  const app=document.getElementById('osjAppWrap');
+  if(login)login.style.display='none';
+  if(app)app.style.display='block';
+}
+function osjInitApp(){
+  if(_osjAppStarted)return;
+  _osjAppStarted=true;
+  initData();
+  const today=new Date();
+  document.getElementById('todayLabel').textContent=today.toLocaleDateString('ko-KR');
+  navigate('dashboard');
+}
+function osjDoLogin(){
+  const idEl=document.getElementById('osjLoginId');
+  const pwEl=document.getElementById('osjLoginPw');
+  const errEl=document.getElementById('osjLoginErr');
+  const id=idEl?idEl.value.trim():'';
+  const pw=pwEl?pwEl.value:'';
+  if(id===OSJ_SYSTEM_LOGIN_ID&&pw===OSJ_SYSTEM_LOGIN_PW){
+    osjSaveSession();
+    if(errEl)errEl.style.display='none';
+    osjShowApp();
+    osjInitApp();
+    return;
+  }
+  if(errEl)errEl.style.display='block';
+}
 function osjDoLogout(){
-  // 현재 OSJ 생산 index.html에는 전용 세션 localStorage key가 없어 삭제할 키가 없음.
-  location.reload();
+  osjClearSession();
+  osjShowLogin();
+  const idEl=document.getElementById('osjLoginId');
+  const pwEl=document.getElementById('osjLoginPw');
+  const errEl=document.getElementById('osjLoginErr');
+  if(idEl)idEl.value='';
+  if(pwEl)pwEl.value='';
+  if(errEl)errEl.style.display='none';
 }
 
 /* ── Initialize default data (only if first visit) ── */
@@ -2672,10 +2778,18 @@ function submitModal(){
    INIT
    ============================================ */
 document.addEventListener('DOMContentLoaded',()=>{
-  initData();
-  const today=new Date();
-  document.getElementById('todayLabel').textContent=today.toLocaleDateString('ko-KR');
-  navigate('dashboard');
+  const btn=document.getElementById('osjLoginBtn');
+  const idEl=document.getElementById('osjLoginId');
+  const pwEl=document.getElementById('osjLoginPw');
+  if(btn)btn.addEventListener('click',osjDoLogin);
+  if(idEl)idEl.addEventListener('keydown',function(e){if(e.key==='Enter'){if(pwEl)pwEl.focus();}});
+  if(pwEl)pwEl.addEventListener('keydown',function(e){if(e.key==='Enter')osjDoLogin();});
+  if(osjHasSession()){
+    osjShowApp();
+    osjInitApp();
+  }else{
+    osjShowLogin();
+  }
   // PWA service worker
   //if('serviceWorker' in navigator){
   //  navigator.serviceWorker.register('sw.js').catch(()=>{});
