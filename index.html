@@ -527,13 +527,18 @@ strong{font-weight:700;}
 .osj-login-btn:hover{background:#2d5a8e;}
 .osj-login-err{display:none;margin-top:10px;font-size:12px;color:#dc2626;font-weight:700;}
 #osjAppWrap{display:none;}
-.top-header .header-right .btn.btn-outline.btn-sm{
-  background:#fff;
-  color:#173b67;
-  border:1px solid rgba(255,255,255,.25);
-  font-weight:600;
+.osj-logout-btn{
+  background:#ffffff !important;
+  color:#173b67 !important;
+  border:1px solid #ffffff !important;
+  font-weight:700 !important;
+  opacity:1 !important;
   min-height:32px;
   white-space:nowrap;
+}
+.osj-logout-btn:hover{
+  background:#f3f7fb !important;
+  color:#0f2f55 !important;
 }
 </style>
 </head>
@@ -579,7 +584,7 @@ strong{font-weight:700;}
       🔔 PM 알림 <strong id="pmAlertCount">0</strong>건
     </a>
     <span class="today-label">📅 <span id="todayLabel"></span></span>
-    <button class="btn btn-outline btn-sm" onclick="osjDoLogout()">로그아웃</button>
+    <button class="btn btn-outline btn-sm osj-logout-btn" onclick="osjDoLogout()">로그아웃</button>
   </div>
 </header>
 
@@ -2790,24 +2795,20 @@ function submitModal(){
    INIT
    ============================================ */
 document.addEventListener('DOMContentLoaded',()=>{
-  const btn=document.getElementById('osjLoginBtn');
-  const idEl=document.getElementById('osjLoginId');
-  const pwEl=document.getElementById('osjLoginPw');
   const params=new URLSearchParams(window.location.search||'');
-  if(btn)btn.addEventListener('click',osjDoLogin);
-  if(idEl)idEl.addEventListener('keydown',function(e){if(e.key==='Enter'){if(pwEl)pwEl.focus();}});
-  if(pwEl)pwEl.addEventListener('keydown',function(e){if(e.key==='Enter')osjDoLogin();});
   if(params.get('resetLogin')==='1'){
-    osjClearSession();
-    params.delete('resetLogin');
-    try{
-      const nextQuery=params.toString();
-      const nextUrl=window.location.pathname+(nextQuery?('?'+nextQuery):'')+window.location.hash;
-      window.history.replaceState(null,'',nextUrl);
-    }catch(e){}
+    localStorage.removeItem('osj_system_session_v1');
+    const cleanUrl=window.location.origin+window.location.pathname;
+    window.history.replaceState({},document.title,cleanUrl);
     osjShowLogin();
     return;
   }
+  const btn=document.getElementById('osjLoginBtn');
+  const idEl=document.getElementById('osjLoginId');
+  const pwEl=document.getElementById('osjLoginPw');
+  if(btn)btn.addEventListener('click',osjDoLogin);
+  if(idEl)idEl.addEventListener('keydown',function(e){if(e.key==='Enter'){if(pwEl)pwEl.focus();}});
+  if(pwEl)pwEl.addEventListener('keydown',function(e){if(e.key==='Enter')osjDoLogin();});
   if(osjHasSession()){
     osjShowApp();
     osjInitApp();
