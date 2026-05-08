@@ -519,6 +519,7 @@ strong{font-weight:700;}
       🔔 PM 알림 <strong id="pmAlertCount">0</strong>건
     </a>
     <span class="today-label">📅 <span id="todayLabel"></span></span>
+    <button class="btn btn-outline btn-sm" onclick="osjDoLogout()">로그아웃</button>
   </div>
 </header>
 
@@ -701,6 +702,10 @@ function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch{
 function getData(key,def){return load('osj_'+key,def);}
 function setData(key,val){save('osj_'+key,val);}
 function getNextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
+function osjDoLogout(){
+  // 현재 OSJ 생산 index.html에는 전용 세션 localStorage key가 없어 삭제할 키가 없음.
+  location.reload();
+}
 
 /* ── Initialize default data (only if first visit) ── */
 function initData(){
