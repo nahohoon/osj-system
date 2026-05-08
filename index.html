@@ -588,7 +588,11 @@ strong{font-weight:700;}
       🔔 PM 알림 <strong id="pmAlertCount">0</strong>건
     </a>
     <span class="today-label">📅 <span id="todayLabel"></span></span>
-    <button class="btn btn-outline btn-sm osj-logout-btn" onclick="osjDoLogout()">로그아웃</button>
+    <button
+      class="btn btn-outline btn-sm osj-logout-btn"
+      onclick="osjDoLogout()"
+      style="color:#fff !important;border:1px solid #fff !important;background:rgba(255,255,255,.18) !important;font-weight:700 !important;opacity:1 !important;"
+    >로그아웃</button>
   </div>
 </header>
 
@@ -777,14 +781,11 @@ const OSJ_SYSTEM_LOGIN_ID='admin';
 const OSJ_SYSTEM_LOGIN_PW='osj1234';
 let _osjAppStarted=false;
 function osjSaveSession(){
-  try{localStorage.setItem(OSJ_SYSTEM_SESSION_KEY,JSON.stringify({id:OSJ_SYSTEM_LOGIN_ID,ts:Date.now()}));}catch(e){}
+  try{localStorage.setItem(OSJ_SYSTEM_SESSION_KEY,'Y');}catch(e){}
 }
 function osjHasSession(){
   try{
-    const raw=localStorage.getItem(OSJ_SYSTEM_SESSION_KEY);
-    if(!raw)return false;
-    const s=JSON.parse(raw);
-    return !!(s&&s.id===OSJ_SYSTEM_LOGIN_ID);
+    return localStorage.getItem(OSJ_SYSTEM_SESSION_KEY)==='Y';
   }catch(e){return false;}
 }
 function osjClearSession(){try{localStorage.removeItem(OSJ_SYSTEM_SESSION_KEY);}catch(e){}}
