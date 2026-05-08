@@ -406,6 +406,82 @@ table{border-collapse:collapse;width:100%;}
 }
 
 /* ============================================
+   Extra Mobile Tuning (<=430px)
+   ============================================ */
+@media(max-width:430px){
+  .main-content{
+    padding:10px;
+    padding-bottom:96px;
+  }
+  .page-header h2{
+    font-size:16px;
+    line-height:1.25;
+  }
+  .card-body,
+  .form-card{
+    padding:12px;
+  }
+  .form-row{
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+  .form-actions{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .form-actions .btn,
+  .form-actions button,
+  .modal-footer .btn,
+  .modal-footer button{
+    width:100%;
+  }
+  .filter-bar{
+    width:100%;
+  }
+  .filter-bar .btn,
+  .filter-bar .btn-sm,
+  .filter-bar button{
+    width:100%;
+  }
+  .data-table td{
+    align-items:flex-start;
+    gap:8px;
+  }
+  .data-table td::before{
+    min-width:68px;
+  }
+  .data-table td .btn-group{
+    width:100%;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .data-table td .btn-group .btn-xs,
+  .data-table td .btn-group button{
+    width:100%;
+    justify-content:center;
+  }
+  .table-responsive{
+    max-width:100%;
+  }
+  .modal-overlay{
+    padding:10px;
+  }
+  .modal{
+    max-width:100%;
+  }
+  .modal-body{
+    padding:14px;
+  }
+  .modal-footer{
+    padding:10px 14px;
+    flex-direction:column;
+    gap:8px;
+  }
+}
+
+/* ============================================
    Misc
    ============================================ */
 .ml-5{margin-left:5px;}
