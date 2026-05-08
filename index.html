@@ -1238,6 +1238,59 @@ function openWoPrint(id){
   const pl=getPlanById(w.plan_id)||{};
   const prod=getProductById(pl.product_id)||{};
   const mold=getMoldById(pl.mold_id)||{};
+  const resultsAll=getData('results',INIT_RESULTS);
+  const defectsAll=getData('defects',INIT_DEFECTS);
+  const results=resultsAll.filter(r=>r.wo_id===w.id);
+  const resultLots=results.map(r=>r.lot_no).filter(Boolean);
+  const relatedDefects=defectsAll.filter(d=>{
+    const sameLot = d.lot_no && resultLots.includes(d.lot_no);
+    const sameMold = mold.id && d.mold_id===mold.id;
+    const sameProduct = prod.id && d.product_id===prod.id;
+    return sameLot || sameMold || sameProduct;
+  });
+  const statusClass = w.status==='대기' ? 'b-wait'
+                   : w.status==='진행' ? 'b-go'
+                   : w.status==='완료' ? 'b-done'
+                   : 'b-cancel';
+  const safe = (v)=> (v===undefined || v===null || v==='') ? '-' : String(v);
+  const num = (v)=> (v===undefined || v===null || v==='') ? '-' : fmtNum(v);
+  const issuedDate = w.created_at ? String(w.created_at).slice(0,10) : T;
+  const lifeRate = (mold.current_shot && mold.life_shot) ? ((mold.current_shot/mold.life_shot)*100).toFixed(1) : '-';
+  const hasQuality = prod.nominal!==undefined || prod.usl!==undefined || prod.lsl!==undefined;
+  const totalQty = results.reduce((s,r)=>s+(Number(r.total_qty)||0),0);
+  const totalGood = results.reduce((s,r)=>s+(Number(r.good_qty)||0),0);
+  const totalDef = results.reduce((s,r)=>s+(Number(r.defect_qty)||0),0);
+  const totalShot = results.reduce((s,r)=>s+(Number(r.shot_count)||0),0);
+  const totalDefRate = totalQty>0 ? ((totalDef/totalQty)*100).toFixed(2) : '0.00';
+  const pmNeed = typeof pmAlert==='function' ? pmAlert(mold) : false;
+  const pmRemaining = (mold.pm_interval && mold.current_shot!==undefined && mold.last_pm_shot!==undefined)
+    ? Math.max(mold.pm_interval - (mold.current_shot - mold.last_pm_shot), 0)
+    : null;
+  const resultRows = results.length
+    ? results.map(r=>{
+        const dr = (Number(r.total_qty)||0) > 0 ? ((Number(r.defect_qty)||0) / Number(r.total_qty) * 100).toFixed(2) : '0.00';
+        return `<tr>
+          <td>${safe(r.lot_no)}</td>
+          <td>${safe(r.result_date)}</td>
+          <td><strong>${num(r.total_qty)}</strong></td>
+          <td style="color:#065f46;">${num(r.good_qty)}</td>
+          <td style="color:#b91c1c;">${num(r.defect_qty)}</td>
+          <td style="${parseFloat(dr)>1?'color:#b91c1c;font-weight:700;':''}">${dr}%</td>
+          <td>${num(r.shot_count)}</td>
+          <td>${safe(r.worker)}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="8" class="empty">실적 없음</td></tr>`;
+  const defectRows = relatedDefects.length
+    ? relatedDefects.map(d=>`<tr>
+        <td>${safe(d.defect_date)}</td>
+        <td>${safe(d.lot_no)}</td>
+        <td><strong>${safe(d.defect_type)}</strong></td>
+        <td style="color:#b91c1c;font-weight:700;">${num(d.defect_qty)}</td>
+        <td style="text-align:left;">${safe(d.cause).slice(0,30)}</td>
+        <td style="text-align:left;">${safe(d.action).slice(0,30)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="6" class="empty">불량 이력 없음</td></tr>`;
   const popup=window.open('', '_blank', 'width=980,height=760');
   if(!popup){ showToast('팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요.'); return; }
   popup.document.write(`<!DOCTYPE html>
@@ -1245,39 +1298,150 @@ function openWoPrint(id){
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>작업지시서 인쇄 - ${w.wo_no}</title>
+  <title>작업지시서 — ${safe(w.wo_no)}</title>
   <style>
-    body { font-family: 'Malgun Gothic', sans-serif; margin: 24px; color: #111; }
-    h1 { font-size: 22px; margin: 0 0 14px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #cfcfcf; padding: 8px 10px; font-size: 13px; text-align: left; }
-    th { background: #f2f5f9; width: 160px; }
-    .actions { margin-bottom: 10px; display: flex; gap: 8px; }
-    .actions button { border: none; border-radius: 4px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
-    .btn-print { background: #f59e0b; color: #111; font-weight: 700; }
-    .btn-close { background: #6b7280; color: #fff; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; font-size: 13px; color: #111; background: #f5f5f5; }
+    .preview-bar {
+      background: #1e3a5f; color: #fff; padding: 10px 24px;
+      display: flex; gap: 12px; align-items: center;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .preview-bar span { flex: 1; font-size: 14px; }
+    .preview-bar button { padding: 6px 18px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 700; }
+    .btn-print { background: #f59e0b; color: #111; }
+    .btn-close  { background: #6b7280; color: #fff; }
+    .page {
+      width: 210mm; min-height: 297mm; margin: 20px auto;
+      background: #fff; padding: 14mm 14mm 12mm;
+      box-shadow: 0 2px 16px rgba(0,0,0,.18);
+    }
+    .doc-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 3px solid #1e3a5f; padding-bottom: 10px; margin-bottom: 14px;
+    }
+    .doc-logo { font-size: 18px; font-weight: 900; color: #1e3a5f; line-height: 1.3; }
+    .doc-logo small { font-size: 11px; font-weight: 400; color: #555; display: block; }
+    .doc-title { font-size: 22px; font-weight: 900; color: #1e3a5f; letter-spacing: 2px; text-align: center; flex: 1; padding-top: 4px; }
+    .doc-meta  { font-size: 11px; color: #555; text-align: right; line-height: 1.8; }
+    .doc-meta strong { color: #111; }
+    .info-tbl { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    .info-tbl th, .info-tbl td { border: 1px solid #c8c8c8; padding: 6px 10px; font-size: 12px; vertical-align: middle; }
+    .info-tbl th { background: #eef3fa; font-weight: 700; color: #1e3a5f; width: 18%; white-space: nowrap; }
+    .info-tbl td { width: 32%; }
+    .sec-title {
+      background: #1e3a5f; color: #fff; font-size: 12px; font-weight: 700;
+      padding: 5px 10px; margin: 14px 0 6px; letter-spacing: 1px;
+    }
+    .data-tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
+    .data-tbl th { background: #d8e4f0; border: 1px solid #b0bec5; padding: 5px 8px; font-weight: 700; text-align: center; }
+    .data-tbl td { border: 1px solid #b0bec5; padding: 5px 8px; text-align: center; }
+    .data-tbl tr:nth-child(even) td { background: #f8fbff; }
+    .data-tbl .empty { color: #aaa; font-style: italic; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .b-wait   { background: #fef3c7; color: #92400e; }
+    .b-go     { background: #dbeafe; color: #1e40af; }
+    .b-done   { background: #d1fae5; color: #065f46; }
+    .b-cancel { background: #e5e7eb; color: #374151; }
+    .note-box { border: 1px solid #c8c8c8; min-height: 48px; padding: 8px 10px; font-size: 12px; color: #333; margin-bottom: 4px; }
+    .sign-wrap { display: flex; gap: 0; border: 1px solid #c8c8c8; margin-top: 16px; }
+    .sign-box { flex: 1; border-right: 1px solid #c8c8c8; padding: 6px 10px; min-height: 68px; }
+    .sign-box:last-child { border-right: none; }
+    .sign-box .sign-label { font-size: 11px; color: #666; font-weight: 700; margin-bottom: 4px; }
+    .sign-box .sign-line  { border-bottom: 1px dashed #aaa; margin: 20px 10px 0; }
+    .doc-footer { margin-top: 18px; font-size: 10px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 6px; }
     @media print {
-      .actions { display: none !important; }
-      body { margin: 0; }
+      body { background: #fff; }
+      .preview-bar { display: none !important; }
+      .page { margin: 0; box-shadow: none; padding: 10mm 12mm; width: 100%; }
+      @page { size: A4 portrait; margin: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="actions">
-    <button class="btn-print" onclick="window.print()">🖨️ 인쇄</button>
-    <button class="btn-close" onclick="window.close()">닫기</button>
+  <div class="preview-bar">
+    <span>📄 작업지시서 미리보기 — ${safe(w.wo_no)}</span>
+    <button class="btn-print" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+    <button class="btn-close" onclick="window.close()">✕ 닫기</button>
   </div>
-  <h1>작업지시서</h1>
-  <table>
-    <tr><th>WO번호</th><td>${w.wo_no||'-'}</td></tr>
-    <tr><th>계획일</th><td>${pl.plan_date||'-'}</td></tr>
-    <tr><th>품목</th><td>${prod.name||'-'} (${prod.code||'-'})</td></tr>
-    <tr><th>금형</th><td>${mold.code||'-'} ${mold.name?('— '+mold.name):''}</td></tr>
-    <tr><th>지시수량</th><td>${fmtNum(w.ordered_qty)} EA</td></tr>
-    <tr><th>시작일시</th><td>${w.start_dt||'-'}</td></tr>
-    <tr><th>완료일시</th><td>${w.end_dt||'-'}</td></tr>
-    <tr><th>상태</th><td>${w.status||'-'}</td></tr>
-  </table>
+  <div class="page">
+    <div class="doc-header">
+      <div class="doc-logo">⬡ 오성정공<br><small>OSJ PRECISION Co., Ltd.</small></div>
+      <div class="doc-title">작 업 지 시 서</div>
+      <div class="doc-meta">
+        발행일: <strong>${safe(issuedDate)}</strong><br>
+        문서번호: <strong>${safe(w.wo_no)}</strong><br>
+        상태: <span class="badge ${statusClass}">${safe(w.status)}</span>
+      </div>
+    </div>
+
+    <div class="sec-title">▶ 작업지시 기본 정보</div>
+    <table class="info-tbl">
+      <tr><th>작업지시번호</th><td><strong>${safe(w.wo_no)}</strong></td><th>계획일</th><td>${safe(pl.plan_date)}</td></tr>
+      <tr><th>품번</th><td>${safe(prod.code)}</td><th>품명</th><td>${safe(prod.name)}</td></tr>
+      <tr><th>납품처</th><td>${safe(prod.customer)}</td><th>교대</th><td>${safe(pl.shift)}</td></tr>
+      <tr><th>사용 금형</th><td>${safe(mold.code)} ${mold.name?`<small>(${safe(mold.name)})</small>`:''}</td><th>금형 캐비티</th><td>${safe(mold.cavity)}${mold.cavity? ' cavity':''}</td></tr>
+      <tr><th>지시 수량</th><td><strong style="font-size:15px;">${num(w.ordered_qty)} EA</strong></td><th>계획 수량</th><td>${num(pl.plan_qty)} EA</td></tr>
+      <tr><th>시작 일시</th><td>${safe(w.start_dt)}</td><th>완료 일시</th><td>${safe(w.end_dt)}</td></tr>
+      <tr><th>금형 현 타수</th><td>${num(mold.current_shot)} 타</td><th>금형 수명율</th><td>${safe(lifeRate)}${lifeRate!=='-'?'%':''} (수명: ${num(mold.life_shot)}타)</td></tr>
+    </table>
+
+    ${hasQuality ? `
+    <div class="sec-title">▶ 품질 기준 (검사 허용범위)</div>
+    <table class="info-tbl">
+      <tr><th>기준치수 (Nominal)</th><td>${safe(prod.nominal)}${prod.nominal!==undefined && prod.nominal!==null && prod.nominal!==''?' mm':''}</td><th>표준 사이클</th><td>${safe(prod.std_cycle)}${prod.std_cycle?' 초/개':''}</td></tr>
+      <tr><th>허용 상한 (USL)</th><td style="color:#c0392b;font-weight:700;">${safe(prod.usl)}</td><th>허용 하한 (LSL)</th><td style="color:#2563eb;font-weight:700;">${safe(prod.lsl)}</td></tr>
+      ${(prod.usl!==undefined && prod.usl!==null && prod.usl!=='' && prod.lsl!==undefined && prod.lsl!==null && prod.lsl!=='') ? `
+      <tr><th>허용범위</th><td colspan="3" style="font-weight:700;">${safe(prod.lsl)} ~ ${safe(prod.usl)}</td></tr>` : ''}
+    </table>` : ''}
+
+    <div class="sec-title">▶ 생산실적 (LOT 이력)</div>
+    <table class="data-tbl">
+      <thead><tr><th>LOT 번호</th><th>실적일</th><th>총생산(EA)</th><th>양품(EA)</th><th>불량(EA)</th><th>불량률(%)</th><th>타수</th><th>작업자</th></tr></thead>
+      <tbody>
+        ${resultRows}
+        ${results.length ? `<tr style="background:#f0f4ff;font-weight:700;">
+          <td colspan="2" style="text-align:center;">합 계</td>
+          <td>${num(totalQty)}</td>
+          <td style="color:#065f46;">${num(totalGood)}</td>
+          <td style="color:#b91c1c;">${num(totalDef)}</td>
+          <td>${totalDefRate}%</td>
+          <td>${num(totalShot)}</td>
+          <td>—</td>
+        </tr>` : ''}
+      </tbody>
+    </table>
+
+    <div class="sec-title">▶ 불량 발생 이력</div>
+    <table class="data-tbl">
+      <thead><tr><th>발생일</th><th>LOT</th><th>불량 유형</th><th>수량(EA)</th><th>원인</th><th>조치</th></tr></thead>
+      <tbody>${defectRows}</tbody>
+    </table>
+
+    <div class="sec-title">▶ 특기사항 / 작업 주의사항</div>
+    <div class="note-box">
+      ${safe(w.remark || w.note)}
+      ${pmNeed ? `<div style="color:#c0392b;font-weight:700;margin-top:6px;">⚠️ 금형 PM 필요: 다음 PM까지 잔여 ${num(pmRemaining)} 타</div>` : ''}
+    </div>
+
+    <div class="sec-title">▶ 확인 서명</div>
+    <div class="sign-wrap">
+      <div class="sign-box"><div class="sign-label">지시자 (생산관리)</div><div class="sign-line"></div><div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div></div>
+      <div class="sign-box"><div class="sign-label">작업 책임자</div><div class="sign-line"></div><div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div></div>
+      <div class="sign-box"><div class="sign-label">품질 확인</div><div class="sign-line"></div><div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div></div>
+      <div class="sign-box"><div class="sign-label">대 표</div><div class="sign-line"></div><div style="font-size:10px;color:#999;text-align:center;margin-top:4px;">서명 / 날인</div></div>
+    </div>
+
+    <div class="doc-footer">
+      오성정공(주) · 금형기반 스마트 생산품질 관리시스템 v2.0 &nbsp;|&nbsp;
+      문서번호: ${safe(w.wo_no)} &nbsp;|&nbsp;
+      출력일시: <span id="printTime"></span>
+    </div>
+  </div>
+  <script>
+    document.getElementById('printTime').textContent =
+      new Date().toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  <\/script>
 </body>
 </html>`);
   popup.document.close();
