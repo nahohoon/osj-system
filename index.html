@@ -834,6 +834,14 @@ function osjDoLogout(){
   if(pwEl)pwEl.value='';
   if(errEl)errEl.style.display='none';
 }
+function osjBindLoginEvents(){
+  const btn=document.getElementById('osjLoginBtn');
+  const idEl=document.getElementById('osjLoginId');
+  const pwEl=document.getElementById('osjLoginPw');
+  if(btn)btn.onclick=osjDoLogin;
+  if(idEl)idEl.onkeydown=function(e){if(e.key==='Enter'&&pwEl)pwEl.focus();};
+  if(pwEl)pwEl.onkeydown=function(e){if(e.key==='Enter')osjDoLogin();};
+}
 
 /* ── Initialize default data (only if first visit) ── */
 function initData(){
@@ -2800,6 +2808,7 @@ function submitModal(){
    INIT
    ============================================ */
 document.addEventListener('DOMContentLoaded',()=>{
+  osjBindLoginEvents();
   const params=new URLSearchParams(window.location.search||'');
   if(params.get('resetLogin')==='1'){
     localStorage.removeItem('osj_system_session_v1');
@@ -2808,12 +2817,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     osjShowLogin();
     return;
   }
-  const btn=document.getElementById('osjLoginBtn');
-  const idEl=document.getElementById('osjLoginId');
-  const pwEl=document.getElementById('osjLoginPw');
-  if(btn)btn.addEventListener('click',osjDoLogin);
-  if(idEl)idEl.addEventListener('keydown',function(e){if(e.key==='Enter'){if(pwEl)pwEl.focus();}});
-  if(pwEl)pwEl.addEventListener('keydown',function(e){if(e.key==='Enter')osjDoLogin();});
   if(osjHasSession()){
     osjShowApp();
     osjInitApp();
