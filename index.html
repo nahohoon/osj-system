@@ -2027,7 +2027,13 @@ function saveResult(e){
 
 /* ─── 재고관리시스템 완제품 자동입고 연동 ───────────────────────────
    생산실적 로컬 저장 직후 호출. 실패해도 생산완료에 영향 없음.
-   전송 대상: OSJ 재고관리 GAS (GAS_BASE_URL, action=saveTransactionGet)  */
+   전송 대상: OSJ 재고관리 전용 GAS (OSJ_INVENTORY_GAS_URL)
+   action=saveTransactionGet (GET 방식)                              */
+// OSJ 재고관리 시스템 전용 GAS URL (생산관리 GAS_BASE_URL과 별개)
+const OSJ_INVENTORY_GAS_URL =
+  'https://script.google.com/macros/s/' +
+  'AKfycby7stu9vatQDhfoQZMB24QyuPw5TuCHaL-U63txFjUGYa38-DHoFT--DW_45IZBzfUE/exec';
+
 function notifyInventoryInboundFromProduction(result, wo, prod) {
   console.log('[OSJ] notifyInventoryInboundFromProduction called', { result, wo, prod });
   if (!prod || !prod.code) {
@@ -2057,7 +2063,8 @@ function notifyInventoryInboundFromProduction(result, wo, prod) {
     site:      '',
     note:      ((wo && wo.wo_no) ? wo.wo_no : '') + ' 생산완료 자동입고',
   });
-  fetch(GAS_BASE_URL + '?' + params.toString(), { method: 'GET' })
+  console.log('[재고연동] GAS 호출:', OSJ_INVENTORY_GAS_URL, params.toString());
+  fetch(OSJ_INVENTORY_GAS_URL + '?' + params.toString(), { method: 'GET' })
     .then(res => res.json())
     .then(data => {
       if (data && data.success === false) {
