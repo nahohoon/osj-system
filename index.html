@@ -1073,8 +1073,10 @@ function progBar(rate){
 }
 function showToast(msg){
   const t=document.getElementById('toast');
+  if(!t)return;
+  clearTimeout(window._toastTimer);
   t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2200);
+  window._toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
 }
 
 /* ============================================
@@ -1961,6 +1963,7 @@ function openResultForm(){
   showModal('📊 생산실적 입력',html,'saveResult');
 }
 function saveResult(e){
+  console.log('[OSJ] saveResult called');
   e&&e.preventDefault();
   const f=e?e.target:document.querySelector('#modals form');
   if(!f)return;
@@ -1983,6 +1986,7 @@ function saveResult(e){
   results.unshift(obj);setData('results',results);
 
   // ── 완제품 재고 자동입고 연동 (로컬 저장 성공 후 즉시 호출) ──
+  console.log('[OSJ] calling inventory inbound notify', { obj, wo, prod });
   notifyInventoryInboundFromProduction(obj, wo, prod);
 
   // ── Google Sheets 전송 ──
@@ -2025,12 +2029,15 @@ function saveResult(e){
    생산실적 로컬 저장 직후 호출. 실패해도 생산완료에 영향 없음.
    전송 대상: OSJ 재고관리 GAS (GAS_BASE_URL, action=saveTransactionGet)  */
 function notifyInventoryInboundFromProduction(result, wo, prod) {
+  console.log('[OSJ] notifyInventoryInboundFromProduction called', { result, wo, prod });
   if (!prod || !prod.code) {
-    console.warn('[재고연동] 품목 정보 없음 — 자동입고 건너뜀');
+    console.warn('[재고연동] 품목 정보 없음 — 자동입고 건너뜀', { prod });
+    showToast('⚠️ 재고 자동입고 실패: 품목 정보 없음');
     return;
   }
   if (!result.good_qty || result.good_qty <= 0) {
     console.warn('[재고연동] 양품수량 0 — 자동입고 건너뜀');
+    showToast('⚠️ 재고 자동입고 실패: 양품수량 0');
     return;
   }
   const params = new URLSearchParams({
