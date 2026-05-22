@@ -1071,12 +1071,12 @@ function progBar(rate){
   const r=Math.min(rate,100);
   return `<div class="prog-wrap"><div class="prog-bar" style="width:${r}%;background:${progColor(rate)};"></div></div><small>${rate}%</small>`;
 }
-function showToast(msg){
+function showToast(msg, duration){
   const t=document.getElementById('toast');
   if(!t)return;
   clearTimeout(window._toastTimer);
   t.textContent=msg;t.classList.add('show');
-  window._toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+  window._toastTimer=setTimeout(()=>t.classList.remove('show'), duration||2800);
 }
 
 /* ============================================
@@ -2038,46 +2038,61 @@ function notifyInventoryInboundFromProduction(result, wo, prod) {
   console.log('[OSJ] notifyInventoryInboundFromProduction called', { result, wo, prod });
   if (!prod || !prod.code) {
     console.warn('[재고연동] 품목 정보 없음 — 자동입고 건너뜀', { prod });
-    showToast('⚠️ 재고 자동입고 실패: 품목 정보 없음');
+    showToast('⚠️ 재고 자동입고 실패: 품목 정보 없음', 8000);
     return;
   }
   if (!result.good_qty || result.good_qty <= 0) {
     console.warn('[재고연동] 양품수량 0 — 자동입고 건너뜀');
-    showToast('⚠️ 재고 자동입고 실패: 양품수량 0');
+    showToast('⚠️ 재고 자동입고 실패: 양품수량 0', 8000);
     return;
   }
-  const params = new URLSearchParams({
-    action:    'saveTransactionGet',
+
+  // osj-inventory saveTx와 동일한 row 구조 + 동일한 URL 인코딩 방식 사용
+  const price = 0;
+  const row = {
     date:      result.result_date
                ? new Date(result.result_date).toISOString()
                : new Date().toISOString(),
     type:      '입고',
     code:      prod.code,
     name:      prod.name || '',
-    qty:       String(result.good_qty),
-    price:     '0',
-    inPrice:   '0',
-    outPrice:  '0',
+    qty:       result.good_qty,
+    price:     price,
     manager:   result.worker || '생산완료자동',
-    warehouse: '완제품창고',
+    warehouse: '본사공장',
     site:      '',
     note:      ((wo && wo.wo_no) ? wo.wo_no : '') + ' 생산완료 자동입고',
-  });
-  console.log('[재고연동] GAS 호출:', OSJ_INVENTORY_GAS_URL, params.toString());
-  fetch(OSJ_INVENTORY_GAS_URL + '?' + params.toString(), { method: 'GET' })
-    .then(res => res.json())
-    .then(data => {
-      if (data && data.success === false) {
-        console.warn('[재고연동] GAS 응답 실패:', data.message);
-        showToast('⚠️ 생산실적은 저장되었으나 재고 자동입고는 실패했습니다.');
+    inPrice:   price,
+    outPrice:  0,
+  };
+  const p = Object.assign({ action: 'saveTransactionGet' }, row);
+  const qs = Object.keys(p).map(k =>
+    encodeURIComponent(k) + '=' + encodeURIComponent(p[k] != null ? p[k] : '')
+  ).join('&');
+  const callUrl = OSJ_INVENTORY_GAS_URL + '?' + qs;
+  console.log('[재고연동] GAS 호출 URL:', callUrl);
+
+  fetch(callUrl, { method: 'GET' })
+    .then(res => res.text())
+    .then(text => {
+      console.log('[재고연동] GAS 원문 응답:', text);
+      let data;
+      try { data = JSON.parse(text); } catch(e) {
+        console.error('[재고연동] JSON 파싱 실패. 응답원문:', text);
+        showToast('⚠️ 재고 자동입고 실패: 응답 파싱 오류 (콘솔 확인)', 8000);
+        return;
+      }
+      if (data.success === false) {
+        console.error('[재고연동] GAS 응답 실패:', data.message, '| 원문:', text);
+        showToast('⚠️ 재고입고 실패: ' + (data.message || '알 수 없는 오류'), 8000);
       } else {
-        console.log('[재고연동] 완제품 자동입고 완료:', prod.code, result.good_qty);
+        console.log('[재고연동] 완제품 자동입고 완료:', prod.code, result.good_qty, data);
         showToast('📦 완제품 재고 자동입고 완료');
       }
     })
     .catch(err => {
-      console.warn('[재고연동] 자동입고 실패:', err);
-      showToast('⚠️ 생산실적은 저장되었으나 재고 자동입고는 실패했습니다.');
+      console.error('[재고연동] 네트워크 오류:', err);
+      showToast('⚠️ 재고 자동입고 실패: 네트워크 오류', 8000);
     });
 }
 
