@@ -2047,23 +2047,18 @@ function notifyInventoryInboundFromProduction(result, wo, prod) {
     return;
   }
 
-  // osj-inventory saveTx와 동일한 row 구조 + 동일한 URL 인코딩 방식 사용
-  const price = 0;
+  // GAS 시트 실제 컬럼명 기준: createdAt,date,itemCode,itemName,type,qty,warehouse,workOrder,memo
   const row = {
     date:      result.result_date
                ? new Date(result.result_date).toISOString()
                : new Date().toISOString(),
-    type:      '입고',
-    code:      prod.code,
-    name:      prod.name || '',
+    itemCode:  prod.code,
+    itemName:  prod.name || '',
+    type:      '생산입고',
     qty:       result.good_qty,
-    price:     price,
-    manager:   result.worker || '생산완료자동',
     warehouse: '본사공장',
-    site:      '',
-    note:      ((wo && wo.wo_no) ? wo.wo_no : '') + ' 생산완료 자동입고',
-    inPrice:   price,
-    outPrice:  0,
+    workOrder: (wo && wo.wo_no) ? wo.wo_no : '',
+    memo:      '생산완료 자동입고',
   };
   const p = Object.assign({ action: 'saveTransactionGet' }, row);
   const qs = Object.keys(p).map(k =>
