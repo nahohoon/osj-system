@@ -1982,6 +1982,9 @@ function saveResult(e){
   // ── 로컬 즉시 반영 ──
   results.unshift(obj);setData('results',results);
 
+  // ── 완제품 재고 자동입고 연동 (로컬 저장 성공 후 즉시 호출) ──
+  notifyInventoryInboundFromProduction(obj, wo, prod);
+
   // ── Google Sheets 전송 ──
   // GAS_BASE_URL 전역 상수 사용
   const payload=JSON.stringify({
@@ -2016,6 +2019,52 @@ function saveResult(e){
     showToast('⚠️ 오류: Google Sheets 저장 실패 (로컬만 저장됨)');
     navigate('result-list');
   });
+}
+
+/* ─── 재고관리시스템 완제품 자동입고 연동 ───────────────────────────
+   생산실적 로컬 저장 직후 호출. 실패해도 생산완료에 영향 없음.
+   전송 대상: OSJ 재고관리 GAS (GAS_BASE_URL, action=saveTransactionGet)  */
+function notifyInventoryInboundFromProduction(result, wo, prod) {
+  if (!prod || !prod.code) {
+    console.warn('[재고연동] 품목 정보 없음 — 자동입고 건너뜀');
+    return;
+  }
+  if (!result.good_qty || result.good_qty <= 0) {
+    console.warn('[재고연동] 양품수량 0 — 자동입고 건너뜀');
+    return;
+  }
+  const params = new URLSearchParams({
+    action:    'saveTransactionGet',
+    date:      result.result_date
+               ? new Date(result.result_date).toISOString()
+               : new Date().toISOString(),
+    type:      '입고',
+    code:      prod.code,
+    name:      prod.name || '',
+    qty:       String(result.good_qty),
+    price:     '0',
+    inPrice:   '0',
+    outPrice:  '0',
+    manager:   result.worker || '생산완료자동',
+    warehouse: '완제품창고',
+    site:      '',
+    note:      ((wo && wo.wo_no) ? wo.wo_no : '') + ' 생산완료 자동입고',
+  });
+  fetch(GAS_BASE_URL + '?' + params.toString(), { method: 'GET' })
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.success === false) {
+        console.warn('[재고연동] GAS 응답 실패:', data.message);
+        showToast('⚠️ 생산실적은 저장되었으나 재고 자동입고는 실패했습니다.');
+      } else {
+        console.log('[재고연동] 완제품 자동입고 완료:', prod.code, result.good_qty);
+        showToast('📦 완제품 재고 자동입고 완료');
+      }
+    })
+    .catch(err => {
+      console.warn('[재고연동] 자동입고 실패:', err);
+      showToast('⚠️ 생산실적은 저장되었으나 재고 자동입고는 실패했습니다.');
+    });
 }
 
 /* ============================================
