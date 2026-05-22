@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#1a3a5c">
-<meta name="description" content="오성정공 금형기반 스마트 생산품질 관리시스템 데모">
-<title>오성정공 생산품질 관리시스템</title>
+<meta name="description" content="OSJ Smart Factory Platform - 생산관리·재고관리·QR라벨 통합 운영">
+<title>OSJ Smart Factory Platform</title>
 <link rel="manifest" href="https://nahohoon.github.io/osj-system/manifest.json">
 <link rel="apple-touch-icon" href="https://nahohoon.github.io/osj-system/icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -30,6 +30,7 @@
   --border: #e0e0e0;
   --sidebar-w: 230px;
   --header-h: 54px;
+  --platform-nav-h: 44px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow-x:hidden;}
@@ -74,7 +75,7 @@ table{border-collapse:collapse;width:100%;}
    Sidebar
    ============================================ */
 .sidebar{
-  position:fixed;top:var(--header-h);left:0;bottom:0;
+  position:fixed;top:calc(var(--header-h) + var(--platform-nav-h));left:0;bottom:0;
   width:var(--sidebar-w);background:var(--primary);
   overflow-y:auto;z-index:900;
   transition:transform 0.25s ease;
@@ -127,8 +128,8 @@ table{border-collapse:collapse;width:100%;}
    Main Content
    ============================================ */
 .main-content{
-  margin-top:var(--header-h);margin-left:var(--sidebar-w);
-  padding:20px;min-height:calc(100vh - var(--header-h));
+  margin-top:calc(var(--header-h) + var(--platform-nav-h));margin-left:var(--sidebar-w);
+  padding:20px;min-height:calc(100vh - var(--header-h) - var(--platform-nav-h));
   transition:margin-left .25s ease;
   padding-bottom:90px;
 }
@@ -544,14 +545,86 @@ strong{font-weight:700;}
   background:rgba(255,255,255,.22) !important;
   border-color:#ffffff !important;
 }
+
+/* ============================================
+   Platform Navigation Bar (통합 플랫폼 메뉴)
+   ============================================ */
+.platform-nav{
+  position:fixed;
+  top:var(--header-h);left:0;right:0;
+  height:var(--platform-nav-h);
+  background:#0f2740;
+  z-index:950;
+  display:flex;align-items:center;
+  padding:0 8px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.25);
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.platform-nav::-webkit-scrollbar{display:none;}
+.platform-nav-list{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  white-space:nowrap;
+  flex-shrink:0;
+  padding:0 4px;
+}
+.platform-nav-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 13px;
+  border-radius:5px;
+  font-size:12px;font-weight:600;
+  color:rgba(255,255,255,0.75);
+  background:transparent;
+  border:1px solid transparent;
+  cursor:pointer;
+  white-space:nowrap;
+  min-height:32px;
+  min-width:44px;
+  transition:all .15s;
+  text-decoration:none;
+  font-family:inherit;
+}
+.platform-nav-btn:hover{
+  background:rgba(255,255,255,0.12);
+  color:#fff;
+  border-color:rgba(255,255,255,0.2);
+}
+.platform-nav-btn.active{
+  background:var(--accent);
+  color:#fff;
+  border-color:transparent;
+}
+.platform-nav-btn.external{
+  color:rgba(255,220,100,0.85);
+}
+.platform-nav-btn.external:hover{
+  background:rgba(255,220,100,0.15);
+  color:#ffd700;
+  border-color:rgba(255,220,100,0.3);
+}
+.platform-nav-divider{
+  width:1px;height:20px;
+  background:rgba(255,255,255,0.18);
+  margin:0 4px;
+  flex-shrink:0;
+}
+@media(max-width:480px){
+  .platform-nav-btn{
+    padding:5px 10px;
+    font-size:11px;
+  }
+}
 </style>
 </head>
 <body>
 
 <div id="osjLoginScreen" class="osj-login-screen">
   <div class="osj-login-card">
-    <div class="osj-login-title">오성정공 생산관리</div>
-    <div class="osj-login-sub">로그인 후 시스템을 이용할 수 있습니다.</div>
+    <div class="osj-login-title">OSJ Smart Factory Platform</div>
+    <div class="osj-login-sub">생산관리 · 재고관리 · QR라벨 통합 운영</div>
     <div class="osj-login-field">
       <label for="osjLoginId">아이디</label>
       <input id="osjLoginId" type="text" autocomplete="username" placeholder="admin">
@@ -578,9 +651,9 @@ strong{font-weight:700;}
   <div class="header-left">
     <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="메뉴">☰</button>
     <span class="brand">
-      <span class="brand-mark">⬡</span>
-      <span class="brand-ko">오성정공</span>
-      <span class="brand-sub">금형기반 스마트 생산품질 관리시스템</span>
+      <span class="brand-mark">🏭</span>
+      <span class="brand-ko">OSJ Smart Factory</span>
+      <span class="brand-sub">생산관리 · 재고관리 · QR라벨 통합 운영</span>
     </span>
   </div>
   <div class="header-right">
@@ -591,6 +664,48 @@ strong{font-weight:700;}
     <button class="btn btn-outline btn-sm osj-logout-btn" type="button" onclick="osjDoLogout()">로그아웃</button>
   </div>
 </header>
+
+<!-- ▶ Platform Navigation Bar (통합 메뉴) -->
+<nav class="platform-nav" id="platformNav" aria-label="플랫폼 통합 메뉴">
+  <div class="platform-nav-list">
+    <!-- 생산관리 내부 메뉴 -->
+    <button class="platform-nav-btn active" id="pnav-dashboard"
+            onclick="platformNav('dashboard')" title="스마트 대시보드">
+      🏠 대시보드
+    </button>
+    <button class="platform-nav-btn" id="pnav-wo"
+            onclick="platformNav('wo-list')" title="작업지시 관리">
+      ▶ 작업지시
+    </button>
+    <button class="platform-nav-btn" id="pnav-result"
+            onclick="platformNav('result-list')" title="생산실적·LOT">
+      📊 생산실적
+    </button>
+
+    <div class="platform-nav-divider"></div>
+
+    <!-- 외부 연동 메뉴 -->
+    <!-- OSJ 전용 재고관리 시스템 연결 -->
+    <!-- KY smart-inventory-pro와 혼동 금지 -->
+    <a class="platform-nav-btn external"
+       href="https://nahohoon.co.kr/osj-inventory"
+       target="_blank" rel="noopener" title="OSJ 재고관리시스템으로 이동">
+      📦 재고관리 ↗
+    </a>
+    <!-- QR라벨 anchor 확인 필요: osj-inventory의 #tab-label 앵커로 직접 연결 시도 -->
+    <a class="platform-nav-btn external"
+       href="https://nahohoon.co.kr/osj-inventory/#tab-label"
+       target="_blank" rel="noopener" title="QR·바코드 라벨 출력으로 이동">
+      🏷 QR라벨 ↗
+    </a>
+    <!-- 완제품재고 전용 화면 추후 연결 -->
+    <a class="platform-nav-btn external"
+       href="https://nahohoon.co.kr/osj-inventory"
+       target="_blank" rel="noopener" title="완제품 재고 현황 (재고관리시스템)">
+      🗂 완제품재고 ↗
+    </a>
+  </div>
+</nav>
 
 <!-- ▶ Sidebar -->
 <nav class="sidebar" id="sidebar">
@@ -655,8 +770,8 @@ strong{font-weight:700;}
     </li>
   </ul>
   <div class="sidebar-footer">
-    <div class="sidebar-version">v2.0 · 데모 (GitHub Pages)</div>
-    <div class="sidebar-concept">금형 → 생산 → 품질 연계</div>
+    <div class="sidebar-version">OSJ Smart Factory Platform v2.0</div>
+    <div class="sidebar-concept">생산 · 재고 · QR 통합 운영</div>
   </div>
 </nav>
 
@@ -880,16 +995,25 @@ function destroyCharts(){
 function navigate(page, params={}){
   destroyCharts();
   currentPage=page;
-  // update active states
+  // update sidebar & bottom-tab active states
   document.querySelectorAll('.nav-item').forEach(el=>{
     el.classList.toggle('active',el.dataset.page===page);
   });
   document.querySelectorAll('.tab-btn').forEach(el=>{
     el.classList.toggle('active',el.dataset.page===page);
   });
+  // update platform nav active state
+  const pnavMap={'dashboard':'pnav-dashboard','wo-list':'pnav-wo','result-list':'pnav-result'};
+  document.querySelectorAll('.platform-nav-btn[id^="pnav-"]').forEach(btn=>{
+    btn.classList.toggle('active', btn.id === (pnavMap[page]||''));
+  });
   // close sidebar on mobile
   if(window.innerWidth<=768) closeSidebar();
   render();
+}
+
+function platformNav(page){
+  navigate(page);
 }
 
 function render(){
